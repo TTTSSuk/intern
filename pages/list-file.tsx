@@ -1,3 +1,5 @@
+// \pages\list-file.tsx
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 
@@ -188,7 +190,7 @@ export default function ListFile() {
       <div className="mt-8 flex justify-end">
         {selectedFileId && (
   <button
-    onClick={() => router.push(`/create-video?fileId=${selectedFileId}`)}
+    onClick={() => router.push(`/create-video?id=${selectedFileId}`)}
     className="px-5 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white font-semibold transition"
   >
     Next 
