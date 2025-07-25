@@ -5,7 +5,7 @@ import path from 'path';
 export interface Folder {
   name?: string;
   files: string[];
-  subfolders: Folder[];
+  subfolders?: Folder[];
 }
 
 export function readFolderRecursive(folderPath: string): Folder {
@@ -15,14 +15,17 @@ export function readFolderRecursive(folderPath: string): Folder {
 
   items.forEach(item => {
     if (item.isDirectory()) {
-      subfolders.push({
-        name: item.name,
-        ...readFolderRecursive(path.join(folderPath, item.name)),
-      });
+      const childFolder = readFolderRecursive(path.join(folderPath, item.name));
+      subfolders.push({ name: item.name, ...childFolder });
     } else {
       files.push(item.name);
     }
   });
 
-  return { files, subfolders };
+  const folder: Partial<Folder> = {};
+
+  if (files.length > 0) folder.files = files;
+  if (subfolders.length > 0) folder.subfolders = subfolders;
+
+  return folder as Folder;
 }
