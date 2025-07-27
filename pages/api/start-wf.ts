@@ -76,7 +76,7 @@ export default async function handler(
   }
 }
 
-// ฟังก์ชันบันทึกข้อมูลลง MongoDB (แบบเดิม + เพิ่ม history)
+// ฟังก์ชันบันทึกข้อมูลลง MongoDB (ไม่อัพเดท updatedAt ที่ระดับบน)
 async function saveToDatabase(
   _id: string,
   executionId: string,
@@ -88,47 +88,21 @@ async function saveToDatabase(
     const db = client.db('login-form-app');
     const collection = db.collection('listfile');
 
-    // ดึงเอกสารเดิม
-    const doc = await collection.findOne({ _id: new ObjectId(_id) });
+    const updateDoc: any = {};
 
-    let executionHistory: any[] = [];
-    if (doc?.executionHistory && Array.isArray(doc.executionHistory)) {
-      // 🔧 แปลงประวัติเก่าให้เป็น object หากเป็น string
-      executionHistory = doc.executionHistory.map((item: any) => {
-        if (typeof item === 'string') {
-          return {
-            executionId: item,
-            status: 'unknown',
-            startTime: new Date(0),
-            updatedAt: new Date(0),
-          };
-        }
-        return item;
-      });
+    if (status === 'started') {
+      updateDoc.executionId = executionId;
+      updateDoc.startTime = startTime ?? new Date();
     }
-
-    // 👇 เพิ่มรายละเอียดลงในประวัติ (แบบเดิม)
-    const newExecution = {
-      executionId,
-      status: status ?? 'started',
-      startTime: startTime ?? new Date(),
-      updatedAt: new Date(),
-    };
-
-    executionHistory.push(newExecution);
-
-    const updateDoc: any = {
-      executionId,           // ตัวล่าสุด
-      executionHistory,      // ประวัติทั้งหมด
-      updatedAt: new Date(),
-    };
-
-    if (status) updateDoc.workflowStatus = status;
-    if (startTime) updateDoc.startTime = startTime;
 
     await collection.updateOne(
       { _id: new ObjectId(_id) },
-      { $set: updateDoc },
+      { 
+        $set: updateDoc,
+        $unset: {
+          executionHistory: ""
+        }
+      },
       { upsert: true }
     );
 
@@ -138,11 +112,12 @@ async function saveToDatabase(
   }
 }
 
-// 🆕 ฟังก์ชันสำหรับอัพเดท history เมื่อเสร็จสิ้น (เรียกใช้จาก status-wf.ts)
+// ฟังก์ชันสำหรับอัพเดท history เมื่อเสร็จสิ้น (เรียกใช้จาก status-wf.ts)
 export async function updateExecutionHistory(
   _id: string,
   executionId: string,
-  finalStatus: string,
+  startTime: Date,
+  workflowStatus: string,
   error?: string
 ) {
   try {
@@ -150,61 +125,37 @@ export async function updateExecutionHistory(
     const db = client.db('login-form-app');
     const collection = db.collection('listfile');
 
-    // ดึงเอกสารปัจจุบัน
-    const doc = await collection.findOne({ _id: new ObjectId(_id) });
-    
-    if (!doc) {
-      console.warn('⚠️ Document not found');
-      return;
-    }
+    const now = new Date();
 
-    // ตรวจสอบว่า executionId ตรงกันไหม
-    if (doc.executionId !== executionId) {
-      console.warn(`⚠️ ExecutionId mismatch: expected ${doc.executionId}, got ${executionId}`);
-      return;
-    }
-
-    // const endTime = new Date();
-    const startTime = new Date(doc.startTime);
-    // const duration = endTime.getTime() - startTime.getTime();
-
-    // อัพเดท executionHistory โดยหารายการล่าสุดและอัพเดท
-    let executionHistory = doc.executionHistory || [];
-    
-    // หารายการที่ต้องอัพเดท (รายการล่าสุดที่มี executionId ตรงกัน)
-    const updatedHistory = executionHistory.map((item: any, index: number) => {
-      // อัพเดทรายการล่าสุดที่ตรงกับ executionId
-      if (index === executionHistory.length - 1 && item.executionId === executionId) {
-        return {
-          ...item,
-          status: finalStatus,
-          // endTime,
-          // duration,
-          updatedAt: new Date(),
-          ...(error && { error }),
-        };
-      }
-      return item;
-    });
-
-    const updateDoc: any = {
-      workflowStatus: finalStatus,
-      // endTime,
-      // duration,
-      executionHistory: updatedHistory,
-      updatedAt: new Date(),
+    // เตรียมข้อมูล object ที่จะเก็บใน executionIdHistory
+    const newHistory = {
+      executionId,
+      startTime,
+      endTime: now, // เวลาที่ workflow เสร็จสิ้น
+      workflowStatus,
+      // updatedAt: now,  <-- เอาออกตามที่ขอ
       ...(error && { error }),
     };
 
     await collection.updateOne(
       { _id: new ObjectId(_id) },
-      { $set: updateDoc }
+      {
+        $set: {
+          executionIdHistory: newHistory,
+        },
+        $unset: {
+          executionId: "",
+          startTime: "",
+          workflowStatus: "",
+          error: "",
+          updatedAt: "",
+          executionHistory: ""
+        }
+      }
     );
 
-    console.log('✅ Execution history updated successfully');
-    console.log(`📊 Final status: ${finalStatus}`);
-    // console.log(`⏱️ Duration: ${duration}ms`);
-  } catch (error) {
-    console.error('❌ Error updating execution history:', error);
+    console.log('✅ executionIdHistory updated and all unwanted fields removed successfully');
+  } catch (err) {
+    console.error('❌ Error updating executionIdHistory:', err);
   }
 }

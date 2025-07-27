@@ -28,9 +28,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ดึงข้อมูลจาก MongoDB โดยกรองไฟล์ที่สถานะไม่ใช่ 'deleted'
     const rawFiles = await videosCollection
-      .find({ userId, status: { $ne: 'deleted' } })
-      .sort({ createdAt: -1 })
-      .toArray();
+      .find({
+            userId,
+            status: { $ne: 'deleted' },
+            executionId: { $exists: false }, // ยังไม่ได้รัน
+            $or: [
+                  { executionIdHistory: { $exists: false } },
+                  { 'executionIdHistory.workflowStatus': { $nin: ['completed', 'error'] } }
+                ]
+            })
+  .sort({ createdAt: -1 })
+  .toArray();
 
     // แปลงข้อมูลดิบให้ตรงกับ interface VideoFile
     const files: VideoFile[] = rawFiles.map(doc => ({

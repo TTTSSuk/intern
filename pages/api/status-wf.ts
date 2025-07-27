@@ -82,33 +82,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       else status = 'running';
     }
 
-    // 🔄 อัปเดตสถานะตามระบบใหม่
+    // อัปเดตสถานะเมื่อ workflow เสร็จสิ้นเท่านั้น
     if (documentId && finished) {
-      // 🎯 เมื่อเสร็จสิ้น: อัพเดท history ด้วยข้อมูลครบถ้วน
       console.log(`🏁 Workflow finished with status: ${status}`);
       
       const finalStatus = status === 'succeeded' ? 'completed' : 'error';
       const errorMessage = status === 'error' ? getErrorMessage(data) : undefined;
-      
-      // อัพเดท history ผ่านฟังก์ชันใหม่
-      await updateExecutionHistory(documentId, execId, finalStatus, errorMessage);
-    } else {
-      // 📝 ระหว่างรันหรือไม่มี documentId: ใช้วิธีเดิม
+
       const client = await clientPromise;
       const db = client.db('login-form-app');
       const collection = db.collection('listfile');
+      const doc = await collection.findOne({ _id: new ObjectId(documentId) });
+      const startTime = doc?.startTime || new Date();
 
-      const updateFields: any = {
-        workflowStatus: status,
-        updatedAt: new Date(),
-      };
-
-      await collection.updateOne(
-        { executionId: execId },
-        { $set: updateFields }
-      );
+      // อัปเดต executionIdHistory โดยไม่มี updatedAt ใน object
+      await updateExecutionHistory(documentId, execId, startTime, finalStatus, errorMessage);
     }
 
+    // ไม่อัปเดต updatedAt ระหว่างรัน (ถ้าไม่จำเป็น)
+    
     return res.status(200).json({ 
       status, 
       executionId: execId, 
@@ -121,28 +113,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-// 🔍 ฟังก์ชันสำหรับดึงข้อความ error จาก n8n response
+// ฟังก์ชันดึงข้อความ error จาก n8n response
 function getErrorMessage(data: any): string | undefined {
   try {
-    // ลองหาข้อความ error ในโครงสร้างข้อมูลต่างๆ
     if (data.data?.resultData?.error?.message) {
       return data.data.resultData.error.message;
     }
-    
     if (data.data?.resultData?.lastNodeExecuted && data.data?.resultData?.error) {
       const lastNode = data.data.resultData.lastNodeExecuted;
       return `Error in node '${lastNode}': ${data.data.resultData.error.message || 'Unknown error'}`;
     }
-    
     if (data.stoppedAt && data.data?.resultData?.error) {
       return data.data.resultData.error.message || 'Workflow stopped with error';
     }
-    
-    // ถ้าไม่เจอข้อความ error ที่ชัดเจน
     if (data.status === 'error' || data.status === 'failed') {
       return 'Workflow execution failed';
     }
-    
     return undefined;
   } catch (err) {
     console.warn('Failed to extract error message:', err);
