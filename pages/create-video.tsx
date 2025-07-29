@@ -18,6 +18,7 @@ export default function CreateVideo() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<VideoCreationStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // const [extractPath, setExtractPath] = useState<string | null>(null);
 
   const pollingTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -35,9 +36,32 @@ export default function CreateVideo() {
 
   async function checkExistingStatus(fileId: string) {
     try {
+      console.log('Checking status for fileId:', fileId); // debug log
+      
       const res = await fetch(`/api/status-wf?id=${fileId}&t=${Date.now()}`);
-      if (!res.ok) throw new Error('Failed to fetch workflow status');
+      
+      if (!res.ok) {
+        if (res.status === 404) {
+          // ถ้าไม่เจอ document หรือยังไม่มี executionId
+          console.log('No existing workflow found, setting to idle');
+          setStatus({
+            _id: fileId,
+            executionId: null,
+            status: 'idle',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          return;
+        }
+        
+        // สำหรับ error อื่นๆ
+        const errorText = await res.text();
+        console.error('API Error:', res.status, errorText);
+        throw new Error(`API Error: ${res.status} - ${errorText}`);
+      }
+
       const data = await res.json();
+      console.log('API Response:', data); // debug log
 
       if (!data.executionId) {
         setStatus({
@@ -58,15 +82,35 @@ export default function CreateVideo() {
         updatedAt: new Date().toISOString(),
       });
 
-      startStatusPolling(data.executionId);
+      // ถ้ายังไม่ finished ให้เริ่ม polling
+      if (!data.finished) {
+        startStatusPolling(data.executionId);
+      }
     } catch (err) {
-      console.error(err);
-      setError('Failed to check video status');
+      console.error('checkExistingStatus error:', err);
+      
+      // แทนที่จะ setError ทันที ให้ตั้งเป็น idle ก่อน
+      setStatus({
+        _id: fileId,
+        executionId: null,
+        status: 'idle',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      
+      // เฉพาะ error ที่ไม่ใช่ 404 ถึงจะแสดง error message
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      if (!errorMessage.includes('404')) {
+        setError('Failed to check video status: ' + errorMessage);
+      }
     }
   }
 
   async function startVideoCreation() {
-    if (!id) return;
+    if (!id) {
+      setError('Missing id');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -85,6 +129,7 @@ export default function CreateVideo() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ _id: id }),
       });
+
       const result = await res.json();
 
       if (res.ok && result.executionId) {
@@ -118,12 +163,14 @@ export default function CreateVideo() {
         const res = await fetch(`/api/status-wf?executionId=${executionId}&t=${Date.now()}`);
         if (!res.ok) {
           const errorText = await res.text();
+          console.error('Polling API error:', res.status, errorText);
           setError(`API error: ${res.status} ${errorText}`);
           setStatus(prev => prev ? { ...prev, status: 'error', updatedAt: new Date().toISOString() } : null);
           return; // หยุด polling
         }
 
         const data = await res.json();
+        console.log('Polling response:', data); // debug log
 
         const currentStatus: VideoCreationStatus['status'] = data.status || 'unknown';
         const finished: boolean = data.finished || false;
@@ -138,15 +185,17 @@ export default function CreateVideo() {
           };
         });
 
-        if (finished || currentStatus === 'error') {
+        if (finished || currentStatus === 'error' || currentStatus === 'succeeded') {
           // หยุด polling เมื่อ workflow เสร็จหรือเกิด error
+          console.log('Polling stopped. Final status:', currentStatus);
           return;
         }
 
+        // ต่อ polling ถ้ายังไม่เสร็จ
         pollingTimeout.current = setTimeout(poll, 5000);
       } catch (err) {
         console.error('Error polling status:', err);
-        setError('Error polling status');
+        setError('Error polling status: ' + (err instanceof Error ? err.message : 'Unknown error'));
         setStatus(prev => prev ? { ...prev, status: 'error', updatedAt: new Date().toISOString() } : null);
         return; // หยุด polling
       }
@@ -185,6 +234,9 @@ export default function CreateVideo() {
             </span>
           </p>
           {status.executionId && <p>Execution ID: {status.executionId}</p>}
+          <p className="text-sm text-gray-500">
+            Last updated: {new Date(status.updatedAt).toLocaleString()}
+          </p>
         </div>
       )}
 
@@ -194,17 +246,21 @@ export default function CreateVideo() {
         </div>
       )}
 
+
       <button
-        onClick={startVideoCreation}
-        disabled={loading || status?.status === 'running' || status?.status === 'starting'}
-        className={`px-6 py-3 rounded-lg font-semibold ${
-          loading || status?.status === 'running' || status?.status === 'starting'
-            ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-blue-600 hover:bg-blue-700 text-white'
-        }`}
-      >
-        {loading || status?.status === 'starting' ? 'Starting...' : 'เริ่มสร้างวิดีโอ'}
-      </button>
+  disabled={loading || status?.status === "running" || status?.status === "succeeded"}
+  className={`px-6 py-3 rounded-lg font-semibold
+    ${
+      status?.status === "running" || status?.status === "succeeded"
+        ? "bg-gray-400 text-gray-500 cursor-not-allowed"
+        : "bg-blue-600 hover:bg-blue-700 text-white"
+    }`}
+  onClick={startVideoCreation}
+>
+  เริ่มสร้างวิดีโอ
+</button>
+
+
     </div>
   );
 }

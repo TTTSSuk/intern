@@ -102,7 +102,8 @@ export default function ListFile() {
 
         {isOpen && (
           <div className="ml-6 mt-2">
-            {folder.files.length > 0 && (
+            {folder.files && folder.files.length > 0 && 
+            (
               <ul className="list-disc list-inside text-gray-600">
                 {folder.files.map((f) => (
                   <li key={f}>{f}</li>

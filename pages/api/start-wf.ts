@@ -30,21 +30,37 @@ export default async function handler(
 
   const { _id } = req.body;
 
-  if (!_id) {
-    return res.status(400).json({ error: '_id is required' });
-  }
+if (!_id) {
+  return res.status(400).json({ error: '_id is required' });
+}
+
+if (!ObjectId.isValid(_id)) {
+  return res.status(400).json({ error: 'Invalid _id format' });
+} 
 
   try {
-    console.log('🚀 Starting workflow for file:', _id);
+    // ดึง extractPath จากฐานข้อมูล
+    const client = await clientPromise;
+    const db = client.db('login-form-app');
+    const collection = db.collection('listfile');
 
-    // เรียก n8n webhook เพื่อเริ่ม workflow
-    const response = await fetch('http://localhost:5678/webhook/start-wf', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ _id }),
-    });
+    const doc = await collection.findOne({ _id: new ObjectId(_id) });
+    if (!doc) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const extractPath = doc.extractPath; // "./uploads/extracted/1753772754637"
+
+// แปลง path ให้เป็น path ใน container
+const containerExtractPath = extractPath.replace(/^\.\/uploads\/extracted/, '/extracted');
+
+const response = await fetch('http://localhost:5678/webhook/start-wf', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ _id, extractPath: containerExtractPath }),
+});
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -53,7 +69,7 @@ export default async function handler(
     const result = await response.json();
     console.log('📥 Response from n8n:', result);
 
-    const executionId = result.executionId;
+    const executionId = result.executionId || result.executionID;
     if (!executionId) {
       throw new Error('No executionId received from n8n');
     }

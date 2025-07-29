@@ -1,4 +1,3 @@
-// pages/api/status-wf.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
@@ -6,6 +5,8 @@ import { updateExecutionHistory } from './start-wf';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id, executionId } = req.query;
+  
+  console.log('status-wf API called with:', { id, executionId }); // debug log
 
   const apiKey = process.env.N8N_API_KEY;
   const apiBase = process.env.N8N_API_BASE_URL;
@@ -34,9 +35,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const db = client.db('login-form-app');
       const collection = db.collection('listfile');
 
+      // ตรวจสอบว่า id เป็น valid ObjectId หรือไม่
+      if (!ObjectId.isValid(id as string)) {
+        console.log('Invalid ObjectId:', id);
+        return res.status(400).json({ error: 'Invalid file ID format' });
+      }
+
       const doc = await collection.findOne({ _id: new ObjectId(id as string) });
-      if (!doc) return res.status(404).json({ error: 'File not found' });
-      if (!doc.executionId) return res.status(404).json({ error: 'No executionId found for this file' });
+      
+      if (!doc) {
+        console.log('Document not found for id:', id);
+        return res.status(404).json({ 
+          error: 'File not found',
+          executionId: null,
+          status: 'idle'
+        });
+      }
+      
+      if (!doc.executionId) {
+        console.log('No executionId found for document:', id);
+        return res.status(200).json({ 
+          executionId: null,
+          status: 'idle',
+          finished: false,
+          documentId: id
+        });
+      }
 
       execId = doc.executionId;
       documentId = id as string;
@@ -56,6 +80,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!response.ok) {
       const errorText = await response.text();
       console.error('N8N API error:', response.status, errorText);
+      
+      // ถ้า execution ไม่เจอใน n8n ให้ return idle แทน error
+      if (response.status === 404) {
+        return res.status(200).json({ 
+          executionId: execId,
+          status: 'idle',
+          finished: true,
+          documentId
+        });
+      }
+      
       return res.status(response.status).json({ error: `N8N API error: ${errorText}` });
     }
 
@@ -65,7 +100,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const rawStatus: string = (data.status ?? '').toLowerCase() || 'unknown';
     let finished: boolean = data.finished ?? false;
 
-    // ถ้าเจอสถานะ error ให้ถือว่า finished = true เพื่อหยุด polling
     if (rawStatus === 'error' || rawStatus === 'failed') {
       finished = true;
     }
@@ -75,14 +109,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (finished) {
       if (rawStatus === 'success' || rawStatus === 'succeeded') status = 'succeeded';
       else if (rawStatus === 'error' || rawStatus === 'failed') status = 'error';
-      else status = 'error'; // fallback
+      else status = 'error';
     } else {
       if (rawStatus === 'running' || rawStatus === 'pending' || rawStatus === 'inprogress') status = 'running';
       else if (rawStatus === 'idle' || rawStatus === 'waiting') status = 'idle';
       else status = 'running';
     }
 
-    // อัปเดตสถานะเมื่อ workflow เสร็จสิ้นเท่านั้น
     if (documentId && finished) {
       console.log(`🏁 Workflow finished with status: ${status}`);
       
@@ -95,12 +128,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const doc = await collection.findOne({ _id: new ObjectId(documentId) });
       const startTime = doc?.startTime || new Date();
 
-      // อัปเดต executionIdHistory โดยไม่มี updatedAt ใน object
       await updateExecutionHistory(documentId, execId, startTime, finalStatus, errorMessage);
     }
 
-    // ไม่อัปเดต updatedAt ระหว่างรัน (ถ้าไม่จำเป็น)
-    
     return res.status(200).json({ 
       status, 
       executionId: execId, 
@@ -113,7 +143,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-// ฟังก์ชันดึงข้อความ error จาก n8n response
 function getErrorMessage(data: any): string | undefined {
   try {
     if (data.data?.resultData?.error?.message) {
