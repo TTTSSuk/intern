@@ -45,18 +45,21 @@ function parseDate(value: string | { $date: string }): Date {
 }
 
 // ฟังก์ชันดึง sourceImage และ promptFile ของ clip
-function getClipSource(video: HistoryVideo, clipIndex: number) {
-  const clip = video.clips[clipIndex];
+function getClipSource(video: HistoryVideo, clip: Clip) {
   if (!video.folders?.subfolders?.length) return { sourceImage: "N/A", promptFile: "N/A" };
 
-  const subfolder = video.folders.subfolders[0].subfolders?.[clipIndex];
+  const videoClips = video.clips.filter(c => c.video);
+  const clipIndex = videoClips.indexOf(clip);
+  const subfolders = video.folders.subfolders[0].subfolders ?? [];
+  const subfolder = subfolders[clipIndex];
   if (!subfolder) return { sourceImage: "N/A", promptFile: "N/A" };
 
   const imageFile = subfolder.files?.find(f => f.match(/\.(jpg|png|jpeg|gif)$/)) ?? "N/A";
   const txtFile = subfolder.files?.find(f => f.endsWith(".txt")) ?? "N/A";
 
-  const sourceImage = `${BASE_VIDEO_URL}/${video.extractPath.replace("./uploads/", "")}/${subfolder.name}/${imageFile}`;
-  const promptFile = `${BASE_VIDEO_URL}/${video.extractPath.replace("./uploads/", "")}/${subfolder.name}/${txtFile}`;
+  const basePath = video.extractPath.replace("./uploads/", "");
+  const sourceImage = `${BASE_VIDEO_URL}/${basePath}/${subfolder.name}/${imageFile}`;
+  const promptFile = `${BASE_VIDEO_URL}/${basePath}/${subfolder.name}/${txtFile}`;
 
   return { sourceImage, promptFile };
 }
@@ -111,26 +114,26 @@ function GeneratedClips({ video, expandedClips, setExpandedClips }: {
       {expandedClips[videoId] && (
         <div className="mt-4 p-4 bg-white rounded-xl border border-slate-200 animate-in slide-in-from-top duration-300">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {video.clips
-            .filter(c => c.video).map((clip, idx) => {
-              const videoUrl = `${BASE_VIDEO_URL}/${clip.video}`;
-              const { sourceImage, promptFile } = getClipSource(video, idx);
+            {video.clips.filter(c => c.video).map((clip) => {
+  const videoUrl = `${BASE_VIDEO_URL}/${clip.video}`;
+  const { sourceImage, promptFile } = getClipSource(video, clip);
 
-              return (
-                <div key={idx} className="bg-slate-50 rounded-lg p-3 hover:bg-slate-100 transition-colors">
-                  <video src={videoUrl} controls className="w-full rounded-lg mb-2 shadow-sm" style={{ maxHeight: '200px' }} />
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                    <p className="text-xs text-slate-600 font-medium">Clip {idx + 1}</p>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">Created: {parseDate(clip.createdAt).toLocaleString()}</p>
-                  <div className="mt-1 text-xs text-slate-500">
-                    <p>📸 Source Image: {sourceImage}</p>
-                    <p>📝 Prompt File: {promptFile}</p>
-                  </div>
-                </div>
-              );
-            })}
+  // ใช้ clip.video เป็น key แทน idx เพื่อให้ React ไม่ warning
+  return (
+    <div key={clip.video} className="bg-slate-50 rounded-lg p-3 hover:bg-slate-100 transition-colors">
+      <video src={videoUrl} controls className="w-full rounded-lg mb-2 shadow-sm" style={{ maxHeight: '200px' }} />
+      <div className="flex items-center gap-2">
+        <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+        <p className="text-xs text-slate-600 font-medium">Clip</p>
+      </div>
+      <p className="text-xs text-slate-500 mt-1">Created: {parseDate(clip.createdAt).toLocaleString()}</p>
+      <div className="mt-1 text-xs text-slate-500">
+        <p>📸 Source Image: {sourceImage}</p>
+        <p>📝 Prompt File: {promptFile}</p>
+      </div>
+    </div>
+  );
+})}
           </div>
         </div>
       )}

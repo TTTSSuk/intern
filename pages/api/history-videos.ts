@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const client = await clientPromise;
-    const db = client.db("login-form-app"); // 👈 เปลี่ยนเป็นชื่อ DB ของคุณ
+    const db = client.db("login-form-app"); 
 
     const history = await db
       .collection("listfile")
