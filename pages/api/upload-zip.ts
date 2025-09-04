@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const extractPath = `./uploads/extracted/${Date.now()}`;
       fs.mkdirSync(extractPath, { recursive: true });
       zip.extractAllTo(extractPath, true);
-      fs.unlinkSync(zipFile.filepath);
+      // fs.unlinkSync(zipFile.filepath);
 
       // อ่านโครงสร้างโฟลเดอร์และไฟล์
       const folderStructure = readFolderRecursive(extractPath);

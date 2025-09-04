@@ -48,7 +48,6 @@ if (!ObjectId.isValid(_id)) {
     if (!doc) {
       return res.status(404).json({ error: 'File not found' });
     }
-
     const extractPath = doc.extractPath; // "./uploads/extracted/1753772754637"
 
 // แปลง path ให้เป็น path ใน container

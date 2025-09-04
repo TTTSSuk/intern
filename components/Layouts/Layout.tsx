@@ -62,7 +62,7 @@ export default function Layout({ user, setUser, children }: LayoutProps) {
     "/list-file": "รายการไฟล์",
     "/my-videos": "วิดีโอของฉัน",
     "/TokenHistory": "ประวัติ Token",
-    "/ceate-video": "สร้างวิดิโอ"
+    // "/ceate-video": "สร้างวิดีโอ"
     // เพิ่มตามที่ต้องการ
   };
 

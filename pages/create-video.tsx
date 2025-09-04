@@ -1,6 +1,5 @@
-//pages\create-video.tsx
-
-import { useState, useEffect, useRef } from 'react';
+// pages/create-video.tsx
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 
 interface VideoCreationStatus {
@@ -11,137 +10,97 @@ interface VideoCreationStatus {
   updatedAt: string;
 }
 
+interface Clip {
+  video?: string;
+  finalVideo?: string;
+  createdAt?: string;
+}
+
+const BASE_VIDEO_URL = 'http://192.168.70.166:8080/';
+
 export default function CreateVideo() {
   const router = useRouter();
-  const { id } = router.query;
+  const idParam = router.query.id;
+  const id = Array.isArray(idParam) ? idParam[0] : idParam;
 
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<VideoCreationStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // const [extractPath, setExtractPath] = useState<string | null>(null);
+  const [clips, setClips] = useState<Clip[]>([]);
+  const [finalVideo, setFinalVideo] = useState<Clip | null>(null);
 
-  const pollingTimeout = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (pollingTimeout.current) clearTimeout(pollingTimeout.current);
-    };
-  }, []);
+  const refreshInterval = 10000;
 
   useEffect(() => {
-    if (id) {
-      checkExistingStatus(id as string);
-    }
+    if (!id) return;
+    const interval = setInterval(() => checkExistingStatus(id), refreshInterval);
+    return () => clearInterval(interval);
   }, [id]);
 
   async function checkExistingStatus(fileId: string) {
     try {
-      console.log('Checking status for fileId:', fileId); // debug log
-      
       const res = await fetch(`/api/status-wf?id=${fileId}&t=${Date.now()}`);
-      
       if (!res.ok) {
         if (res.status === 404) {
-          // ถ้าไม่เจอ document หรือยังไม่มี executionId
-          console.log('No existing workflow found, setting to idle');
-          setStatus({
-            _id: fileId,
-            executionId: null,
-            status: 'idle',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          });
+          setStatus({ _id: fileId, executionId: null, status: 'idle', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
           return;
         }
-        
-        // สำหรับ error อื่นๆ
-        const errorText = await res.text();
-        console.error('API Error:', res.status, errorText);
-        throw new Error(`API Error: ${res.status} - ${errorText}`);
+        throw new Error(`API Error: ${res.status}`);
       }
 
       const data = await res.json();
-      console.log('API Response:', data); // debug log
-
-      if (!data.executionId) {
-        setStatus({
-          _id: fileId,
-          executionId: null,
-          status: 'idle',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-        return;
-      }
 
       setStatus({
         _id: fileId,
-        executionId: data.executionId,
+        executionId: data.executionId || null,
         status: data.status || 'unknown',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
 
-      // ถ้ายังไม่ finished ให้เริ่ม polling
-      if (!data.finished) {
-        startStatusPolling(data.executionId);
+      if (Array.isArray(data.clips)) {
+        const newClips: Clip[] = [];
+        data.clips.forEach((c: Clip) => {
+          if (c.finalVideo) {
+            setFinalVideo({ ...c });
+          } else if (c.video) {
+            newClips.push({ ...c });
+          }
+        });
+
+        setClips(prev => {
+          const existingVideos = new Set(prev.map(c => c.video));
+          const filtered = newClips.filter(c => c.video && !existingVideos.has(c.video));
+          return [...prev, ...filtered];
+        });
       }
     } catch (err) {
-      console.error('checkExistingStatus error:', err);
-      
-      // แทนที่จะ setError ทันที ให้ตั้งเป็น idle ก่อน
-      setStatus({
-        _id: fileId,
-        executionId: null,
-        status: 'idle',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      
-      // เฉพาะ error ที่ไม่ใช่ 404 ถึงจะแสดง error message
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      if (!errorMessage.includes('404')) {
-        setError('Failed to check video status: ' + errorMessage);
-      }
+      console.error(err);
+      setStatus({ _id: fileId, executionId: null, status: 'error', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      setError(err instanceof Error ? err.message : 'Unknown error');
     }
   }
 
   async function startVideoCreation() {
     if (!id) {
-      setError('Missing id');
+      router.push('/list-file');
       return;
     }
 
     setLoading(true);
     setError(null);
-
-    setStatus({
-      _id: id as string,
-      executionId: null,
-      status: 'starting',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+    setStatus({ _id: id, executionId: null, status: 'starting', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
 
     try {
-      const res = await fetch('/api/start-wf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ _id: id }),
+      const res = await fetch('/api/start-wf', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ _id: id }) 
       });
-
       const result = await res.json();
 
       if (res.ok && result.executionId) {
-        setStatus({
-          _id: id as string,
-          executionId: result.executionId,
-          status: 'running',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-
-        startStatusPolling(result.executionId);
+        setStatus({ _id: id, executionId: result.executionId, status: 'running', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
       } else {
         setError(result.error || 'Failed to start workflow');
         setStatus(prev => prev ? { ...prev, status: 'error', updatedAt: new Date().toISOString() } : null);
@@ -155,112 +114,263 @@ export default function CreateVideo() {
     }
   }
 
-  function startStatusPolling(executionId: string) {
-    if (pollingTimeout.current) clearTimeout(pollingTimeout.current);
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'idle':
+        return <div className="w-3 h-3 rounded-full bg-gray-400"></div>;
+      case 'starting':
+      case 'running':
+        return <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>;
+      case 'succeeded':
+        return <div className="w-3 h-3 rounded-full bg-green-500"></div>;
+      case 'error':
+        return <div className="w-3 h-3 rounded-full bg-red-500"></div>;
+      default:
+        return <div className="w-3 h-3 rounded-full bg-gray-300"></div>;
+    }
+  };
 
-    const poll = async () => {
-      try {
-        const res = await fetch(`/api/status-wf?executionId=${executionId}&t=${Date.now()}`);
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error('Polling API error:', res.status, errorText);
-          setError(`API error: ${res.status} ${errorText}`);
-          setStatus(prev => prev ? { ...prev, status: 'error', updatedAt: new Date().toISOString() } : null);
-          return; // หยุด polling
-        }
-
-        const data = await res.json();
-        console.log('Polling response:', data); // debug log
-
-        const currentStatus: VideoCreationStatus['status'] = data.status || 'unknown';
-        const finished: boolean = data.finished || false;
-
-        setStatus(prev => {
-          if (prev?.status === currentStatus) return prev;
-          return {
-            ...prev!,
-            status: currentStatus,
-            updatedAt: new Date().toISOString(),
-            executionId,
-          };
-        });
-
-        if (finished || currentStatus === 'error' || currentStatus === 'succeeded') {
-          // หยุด polling เมื่อ workflow เสร็จหรือเกิด error
-          console.log('Polling stopped. Final status:', currentStatus);
-          return;
-        }
-
-        // ต่อ polling ถ้ายังไม่เสร็จ
-        pollingTimeout.current = setTimeout(poll, 5000);
-      } catch (err) {
-        console.error('Error polling status:', err);
-        setError('Error polling status: ' + (err instanceof Error ? err.message : 'Unknown error'));
-        setStatus(prev => prev ? { ...prev, status: 'error', updatedAt: new Date().toISOString() } : null);
-        return; // หยุด polling
-      }
-    };
-
-    poll();
-  }
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'succeeded':
+        return 'text-green-600 bg-green-50 border-green-200';
+      case 'error':
+        return 'text-red-600 bg-red-50 border-red-200';
+      case 'running':
+      case 'starting':
+        return 'text-blue-600 bg-blue-50 border-blue-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Create Video</h1>
-
-      {id && (
-        <div className="mb-6">
-          <p className="text-gray-600">File ID: {id}</p>
+    <div className="min-h-screen">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-800 mb-3">
+             สร้างวิดีโอ
+          </h1>
+          {/* <p className="text-gray-600 text-lg">
+            แปลงไฟล์ของคุณเป็นวิดีโอที่น่าสนใจ
+          </p> */}
         </div>
-      )}
 
-      {status && (
-        <div className="mb-6 p-4 border rounded-lg">
-          <h3 className="font-semibold mb-2">Workflow Status</h3>
-          <p>
-            Status:{' '}
-            <span
-              className={`font-semibold ${
-                status.status === 'succeeded'
-                  ? 'text-green-600'
-                  : status.status === 'error'
-                  ? 'text-red-600'
-                  : status.status === 'running'
-                  ? 'text-blue-600'
-                  : 'text-gray-600'
-              }`}
-            >
-              {status.status}
-            </span>
-          </p>
-          {status.executionId && <p>Execution ID: {status.executionId}</p>}
-          <p className="text-sm text-gray-500">
-            Last updated: {new Date(status.updatedAt).toLocaleString()}
-          </p>
+        {/* File ID Card */}
+        {id && (
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-xl">📄</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">ไฟล์ที่เลือก</h3>
+                <p className="text-gray-600 font-mono text-sm bg-gray-100 px-3 py-1 rounded-md inline-block">
+                  {id}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Status Card */}
+        {status && (
+          <div className={`rounded-xl shadow-lg p-6 mb-6 border-2 ${getStatusColor(status.status)}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold flex items-center space-x-3">
+                {getStatusIcon(status.status)}
+                <span>สถานะการทำงาน</span>
+              </h3>
+              {status.status === 'running' && (
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white/70 rounded-lg p-4">
+                <p className="text-sm text-gray-500 mb-1">สถานะปัจจุบัน</p>
+                <p className="font-bold text-lg capitalize">{status.status}</p>
+              </div>
+              
+              {status.executionId && (
+                <div className="bg-white/70 rounded-lg p-4">
+                  <p className="text-sm text-gray-500 mb-1">Execution ID</p>
+                  <p className="font-mono text-sm truncate">{status.executionId}</p>
+                </div>
+              )}
+              
+              <div className="bg-white/70 rounded-lg p-4">
+                <p className="text-sm text-gray-500 mb-1">อัพเดทล่าสุด</p>
+                <p className="text-sm">{status?.updatedAt ? new Date(status.updatedAt).toLocaleString('th-TH') : '-'}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Error Alert */}
+        {error && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-xl">⚠️</span>
+              </div>
+              <div>
+                <h3 className="font-bold text-red-800 mb-1">เกิดข้อผิดพลาด</h3>
+                <p className="text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Generated Clips */}
+        {clips.length > 0 && (
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-200">
+            <div className="flex items-center space-x-3 mb-6">  
+              <h3 className="text-xl font-bold text-gray-800">คลิปที่สร้างแล้ว ({clips.length})</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {clips.map((clip, index) => (
+                <div key={index} className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
+                  {clip.video && (
+                    <video 
+                      className="w-full h-40 object-cover" 
+                      controls 
+                      src={`${BASE_VIDEO_URL}${clip.video}`}
+                      poster="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDMyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjE2MCIgY3k9IjkwIiByPSIzMCIgZmlsbD0iIzZCNzI4MCIvPgo8cGF0aCBkPSJNMTUwIDc1TDE3NSA5MEwxNTAgMTA1VjEwNVY3NVoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo="
+                    />
+                  )}
+                  <div className="p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">คลิป {index + 1}</span>
+                      <span className="text-xs text-gray-400">
+                        {clip.createdAt ? new Date(clip.createdAt).toLocaleDateString('th-TH') : '-'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Final Video */}
+        {finalVideo && (
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl shadow-lg p-6 mb-6 border-2 border-green-200">
+            <div className="flex items-center space-x-3 mb-6">
+              {/* <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-2xl">🎯</span>
+              </div> */}
+              <h3 className="text-2xl font-bold text-green-800">วิดีโอสำเร็จรูป</h3>
+            </div>
+            
+            <div className="bg-white rounded-lg overflow-hidden shadow-md">
+              <video 
+                className="w-full max-h-96 object-contain" 
+                controls 
+                src={`${BASE_VIDEO_URL}${finalVideo.finalVideo}`}
+              />
+              <div className="p-4 bg-gray-50">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+                  <div>
+                    <p className="font-semibold text-gray-800">วิดีโอพร้อมใช้งาน</p>
+                    <p className="text-sm text-gray-600">
+                      สร้างเมื่อ: {finalVideo.createdAt ? new Date(finalVideo.createdAt).toLocaleString('th-TH') : '-'}
+                    </p>
+                  </div>
+                  <a 
+                    href={`${BASE_VIDEO_URL}${finalVideo.finalVideo}`} 
+                    download="final_video.mp4" 
+                    className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  >
+                    {/* <span>📥</span> */}
+                    <span className="font-semibold">ดาวน์โหลดวิดีโอ</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Action Button */}
+        <div className="text-center">
+          <button
+            disabled={loading || status?.status === 'running' || status?.status === 'succeeded'}
+            className={`inline-flex items-center space-x-3 px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
+              status?.status === 'running' || status?.status === 'succeeded'
+                ? 'bg-gray-400 text-gray-500 cursor-not-allowed shadow-none transform-none'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
+            }`}
+            onClick={startVideoCreation}
+          >
+            {loading ? (
+              <>
+                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>กำลังเริ่มต้น...</span>
+              </>
+            ) : status?.status === 'running' ? (
+              <>
+                {/* <span>⏳</span> */}
+                <span>กำลังสร้างวิดีโอ...</span>
+              </>
+            ) : status?.status === 'succeeded' ? (
+              <>
+                {/* <span>✅</span> */}
+                <span>เสร็จสิ้นแล้ว</span>
+              </>
+            ) : (
+              <>
+                {/* <span>🚀</span> */}
+                <span>เริ่มสร้างวิดีโอ</span>
+              </>
+            )}
+          </button>
+          
+          {(status?.status === 'running' || status?.status === 'starting') && (
+            <p className="mt-3 text-sm text-gray-600">
+              กระบวนการนี้อาจใช้เวลาสักครู่ หน้าจอจะอัพเดทอัตโนมัติทุก 10 วินาที
+            </p>
+          )}
         </div>
-      )}
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          Error: {error}
-        </div>
-      )}
-
-
-      <button
-  disabled={loading || status?.status === "running" || status?.status === "succeeded"}
-  className={`px-6 py-3 rounded-lg font-semibold
-    ${
-      status?.status === "running" || status?.status === "succeeded"
-        ? "bg-gray-400 text-gray-500 cursor-not-allowed"
-        : "bg-blue-600 hover:bg-blue-700 text-white"
-    }`}
-  onClick={startVideoCreation}
->
-  เริ่มสร้างวิดีโอ
-</button>
-
-
+        {/* Progress Steps */}
+        {status && (
+          <div className="mt-8 bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">ขั้นตอนการสร้างวิดีโอ</h3>
+            <div className="flex items-center justify-between">
+              <div className={`flex flex-col items-center space-y-2 ${status.status !== 'idle' ? 'text-green-600' : 'text-gray-400'}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${status.status !== 'idle' ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-500'}`}>
+                  {status.status !== 'idle' ? '✓' : '1'}
+                </div>
+                <span className="text-sm font-medium">เริ่มต้น</span>
+              </div>
+              
+              <div className={`flex-1 h-1 mx-4 ${status.status === 'running' || status.status === 'succeeded' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+              
+              <div className={`flex flex-col items-center space-y-2 ${status.status === 'running' || status.status === 'succeeded' ? 'text-blue-600' : 'text-gray-400'}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${status.status === 'running' ? 'bg-blue-500 text-white animate-pulse' : status.status === 'succeeded' ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-500'}`}>
+                  {status.status === 'succeeded' ? '✓' : status.status === 'running' ? '⟳' : '2'}
+                </div>
+                <span className="text-sm font-medium">กำลังประมวลผล</span>
+              </div>
+              
+              <div className={`flex-1 h-1 mx-4 ${status.status === 'succeeded' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+              
+              <div className={`flex flex-col items-center space-y-2 ${status.status === 'succeeded' ? 'text-green-600' : 'text-gray-400'}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${status.status === 'succeeded' ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-500'}`}>
+                  {status.status === 'succeeded' ? '✓' : '3'}
+                </div>
+                <span className="text-sm font-medium">เสร็จสิ้น</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -37,7 +37,7 @@ export default function Dashboard() {
       <p>ยินดีต้อนรับเข้าสู่ระบบครับ</p>
 
       <button
-        onClick={() => router.push('/upload-zip')}
+        onClick={() => router.push('/create-video')}
         style={{
           marginTop: 40,
           padding: '16px 32px',
