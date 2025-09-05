@@ -22,15 +22,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .find({ userId })
       .project({
         _id: 1,
+        userId: 1,
         originalName: 1,
         status: 1,
         createdAt: 1,
         clips: 1,
         executionIdHistory: 1,
+        folders: 1,
+        extractPath: 1,
       })
       .sort({ createdAt: -1 })
       .toArray();
 
+    console.log("DEBUG history fetched for user:", userId, history.length);
     res.status(200).json(history);
   } catch (error) {
     console.error("Error fetching history videos:", error);

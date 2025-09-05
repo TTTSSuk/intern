@@ -36,7 +36,7 @@ interface HistoryVideo {
   executionIdHistory?: ExecutionHistory;
 }
 
-const BASE_VIDEO_URL = 'http://192.168.70.166:8080/';
+const BASE_VIDEO_URL = 'http://192.168.70.166:8080';
 
 // ฟังก์ชันช่วยแปลงวันที่
 function parseDate(value: string | { $date: string }): Date {
@@ -45,23 +45,44 @@ function parseDate(value: string | { $date: string }): Date {
 }
 
 // ฟังก์ชันดึง sourceImage และ promptFile ของ clip
-function getClipSource(video: HistoryVideo, clip: Clip) {
-  if (!video.folders?.subfolders?.length) return { sourceImage: "N/A", promptFile: "N/A" };
+function getClipSource(video: HistoryVideo, clipIndex: number) {
+  if (!video.folders?.subfolders?.length) {
+    return { sourceImage: "N/A", promptFile: "N/A" };
+  }
 
-  const videoClips = video.clips.filter(c => c.video);
-  const clipIndex = videoClips.indexOf(clip);
+  const parentFolder = video.originalName.replace(/\.zip$/i, "");
   const subfolders = video.folders.subfolders[0].subfolders ?? [];
-  const subfolder = subfolders[clipIndex];
-  if (!subfolder) return { sourceImage: "N/A", promptFile: "N/A" };
+const subfolder = subfolders[clipIndex];
 
-  const imageFile = subfolder.files?.find(f => f.match(/\.(jpg|png|jpeg|gif)$/)) ?? "N/A";
-  const txtFile = subfolder.files?.find(f => f.endsWith(".txt")) ?? "N/A";
+  if (!subfolder) {
+    return { sourceImage: "N/A", promptFile: "N/A" };
+  }
 
-  const basePath = video.extractPath.replace("./uploads/", "");
-  const sourceImage = `${BASE_VIDEO_URL}/${basePath}/${subfolder.name}/${imageFile}`;
-  const promptFile = `${BASE_VIDEO_URL}/${basePath}/${subfolder.name}/${txtFile}`;
+  const imageFile = subfolder.files?.find(f => f.match(/\.(jpg|jpeg|png|gif)$/i)) ?? "";
+  const txtFile = subfolder.files?.find(f => f.endsWith(".txt")) ?? "";
 
-  return { sourceImage, promptFile };
+  const basePath = video.extractPath.replace("./uploads/extracted/", "");
+  const sourceImage = imageFile
+    ? `${BASE_VIDEO_URL}/${basePath}/${parentFolder}/${subfolder.name}/${imageFile}`
+    : "N/A";
+
+  // const promptFile = txtFile
+  //   ? `${BASE_VIDEO_URL}/${basePath}/${parentFolder}/${subfolder.name}/${txtFile}`
+  //   : "N/A";
+
+     // 🔹 Debug log
+  console.log("DEBUG getClipSource:", {
+    parentFolder,
+    subfolderName: subfolder.name,
+    imageFile,
+    txtFile,
+    basePath,
+    sourceImage,
+    // promptFile,
+  });
+
+  // return { sourceImage, promptFile };
+  return { sourceImage };
 }
 
 // Component แสดง Generated Clips
@@ -74,6 +95,7 @@ function GeneratedClips({ video, expandedClips, setExpandedClips }: {
   if (!hasClips) return null;
 
   const videoId = video._id.$oid;
+  const [selectedClip, setSelectedClip] = useState<{index: number, clip: Clip} | null>(null);
 
   return (
     <div>
@@ -114,26 +136,114 @@ function GeneratedClips({ video, expandedClips, setExpandedClips }: {
       {expandedClips[videoId] && (
         <div className="mt-4 p-4 bg-white rounded-xl border border-slate-200 animate-in slide-in-from-top duration-300">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {video.clips.filter(c => c.video).map((clip) => {
-  const videoUrl = `${BASE_VIDEO_URL}/${clip.video}`;
-  const { sourceImage, promptFile } = getClipSource(video, clip);
+            {video.clips.filter(c => c.video).map((clip, idx) => {
+              const videoUrl = `${BASE_VIDEO_URL}/${clip.video}`;
+              const { sourceImage } = getClipSource(video, idx);
 
-  // ใช้ clip.video เป็น key แทน idx เพื่อให้ React ไม่ warning
-  return (
-    <div key={clip.video} className="bg-slate-50 rounded-lg p-3 hover:bg-slate-100 transition-colors">
-      <video src={videoUrl} controls className="w-full rounded-lg mb-2 shadow-sm" style={{ maxHeight: '200px' }} />
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-        <p className="text-xs text-slate-600 font-medium">Clip</p>
-      </div>
-      <p className="text-xs text-slate-500 mt-1">Created: {parseDate(clip.createdAt).toLocaleString()}</p>
-      <div className="mt-1 text-xs text-slate-500">
-        <p>📸 Source Image: {sourceImage}</p>
-        <p>📝 Prompt File: {promptFile}</p>
-      </div>
-    </div>
-  );
-})}
+              return (
+                <div
+                  key={clip.video}
+                  className="bg-slate-50 rounded-lg p-3 hover:bg-slate-100 transition-colors"
+                >
+                  <video
+                    src={videoUrl}
+                    controls
+                    className="w-full rounded-lg mb-2 shadow-sm"
+                    style={{ maxHeight: "200px" }}
+                  />
+
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                    <p className="text-xs text-slate-600 font-medium">Clip</p>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-2">
+                    Created: {parseDate(clip.createdAt).toLocaleString()}
+                  </p>
+                  
+                  {/* ปุ่มรายละเอียดเพิ่มเติม */}
+                  <button
+                    onClick={() => setSelectedClip({index: idx, clip})}
+                    className="w-full mt-2 px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-xs text-slate-600 transition-colors flex items-center justify-center gap-1"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    รายละเอียดเพิ่มเติม
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Popup Modal */}
+      {selectedClip && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl p-6 max-w-lg w-full mx-4 animate-in zoom-in-95 duration-300">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-800">รายละเอียดคลิป</h3>
+              <button
+                onClick={() => setSelectedClip(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+              >
+                <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="space-y-4">
+              {/* Source Image */}
+              <div>
+                <h4 className="text-sm font-medium text-slate-700 mb-2">Source Image</h4>
+                {(() => {
+                  const { sourceImage } = getClipSource(video, selectedClip.index);
+                  return sourceImage !== "N/A" ? (
+                    <img
+                      src={sourceImage}
+                      alt="Source"
+                      className="w-full rounded-lg shadow border"
+                      style={{ height: "200px", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">No source image available</p>
+                  );
+                })()}
+              </div>
+
+              {/* Prompt */}
+              <div>
+                <h4 className="text-sm font-medium text-slate-700 mb-2">Prompt</h4>
+                {(() => {
+                  const parentFolder = video.originalName.replace(/\.zip$/i, "");
+                  const subfolders = video.folders?.subfolders?.[0]?.subfolders ?? [];
+                  const subfolder = subfolders[selectedClip.index];
+                  const txtFile = subfolder?.files?.find(f => f.endsWith(".txt"));
+                  
+                  if (!txtFile) {
+                    return <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">No prompt file available</p>;
+                  }
+
+                  const basePath = video.extractPath.replace("./uploads/extracted/", "");
+                  const promptUrl = `${BASE_VIDEO_URL}/${basePath}/${parentFolder}/${subfolder.name}/${txtFile}`;
+                  
+                  return (
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-sm text-slate-600 mb-2">Prompt file: <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">{txtFile}</code></p>
+                      <iframe
+                        src={promptUrl}
+                        className="w-full rounded border bg-white text-sm"
+                        style={{ height: "80px" }}
+                        title="Prompt content"
+                      />
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
           </div>
         </div>
       )}
