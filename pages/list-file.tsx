@@ -1,5 +1,8 @@
+//pages\list-file.tsx
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useStep } from '@/context/StepContext';
+import StepProgress from '@/components/Layouts/StepProgress';
 
 interface Folder {
   name: string;
@@ -26,6 +29,8 @@ export default function ListFile() {
   const [error, setError] = useState<string | null>(null);
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const steps = ['อัปโหลดไฟล์', 'รายการไฟล์', 'สร้างวิดีโอ'];
+  const { currentStep, setCurrentStep } = useStep();
 
   useEffect(() => {
     const storedUserId = localStorage.getItem('loggedInUser');
@@ -36,6 +41,9 @@ export default function ListFile() {
     }
 
     const userId: string = storedUserId;
+
+     // ตั้งค่า Step Bar เป็น step 2
+    setCurrentStep(2);
 
     async function fetchFiles() {
       try {
@@ -51,7 +59,7 @@ export default function ListFile() {
     }
 
     fetchFiles();
-  }, []);
+  },  [setCurrentStep]);
 
   const toggleFolder = (path: string) => {
     setOpenFolders((prev) => {
@@ -165,6 +173,20 @@ export default function ListFile() {
   }
 
   return (
+    <div className="container mx-auto px-4 py-8">
+  <StepProgress 
+  steps={steps} 
+  currentStep={currentStep}
+  canGoNext={selectedFileId !== null} // เปิด Next เฉพาะเมื่อเลือกไฟล์แล้ว
+  onPreview={() => router.push('/upload-zip')} // กลับไปหน้า upload
+  onNext={() => {
+    if (selectedFileId) {
+      setCurrentStep(3); // update step เป็น 3
+      router.push(`/create-video?id=${selectedFileId}`); // ไปหน้า create-video
+    }
+  }}
+/>
+
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
@@ -269,6 +291,7 @@ export default function ListFile() {
           ))}
         </div>
       </div>
+    </div>
     </div>
   );
 }

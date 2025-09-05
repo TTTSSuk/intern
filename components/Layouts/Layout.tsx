@@ -58,7 +58,7 @@ export default function Layout({ user, setUser, children }: LayoutProps) {
 
   
   const pageTitles: Record<string, string> = {
-    "/upload-zip": "อัปโหลดไฟล์",
+    // "/upload-zip": "อัปโหลดไฟล์",
     "/list-file": "รายการไฟล์",
     "/my-videos": "วิดีโอของฉัน",
     "/TokenHistory": "ประวัติ Token",
@@ -86,7 +86,12 @@ export default function Layout({ user, setUser, children }: LayoutProps) {
 
           {/* เมนูกลาง (ซ่อนบนมือถือ) */}
           <nav className="hidden md:flex space-x-8 text-gray-700 font-medium">
-            <button
+            {<button
+              onClick={() => router.push("/list-file")}
+              className="hover:text-indigo-600 transition"
+            >
+              รายการไฟล์
+            </button>}{/* <button
               onClick={() => router.push("/upload-zip")}
               className="hover:text-indigo-600 transition"
             >
@@ -97,18 +102,18 @@ export default function Layout({ user, setUser, children }: LayoutProps) {
               className="hover:text-indigo-600 transition"
             >
               รายการไฟล์
-            </button>
+            </button> */}
             <button
               onClick={() => router.push("/my-videos")}
               className="hover:text-indigo-600 transition"
             >
               วิดีโอของฉัน
             </button>
-            <button
+            {/* <button
               onClick={() => router.push("/create-video")}
               className="hover:text-indigo-600 transition">
               สร้างวิดิโอ
-            </button>
+            </button> */}
           </nav>
 
           {/* ขวา: Token + รูป user + dropdown */}
@@ -204,7 +209,7 @@ export default function Layout({ user, setUser, children }: LayoutProps) {
       </header>
 
       {/* Page Title Section - ย้ายออกมาจาก dropdown */}
-      {isClient && !isDashboard && pageTitle && (
+      {/* {isClient && !isDashboard && pageTitle && (
         <div className="fixed top-16 left-0 w-full bg-white shadow-sm z-40 flex items-center px-6 py-4 space-x-4">
           <button
             onClick={() => router.back()}
@@ -215,7 +220,7 @@ export default function Layout({ user, setUser, children }: LayoutProps) {
           </button>
           <h2 className="text-xl font-semibold text-gray-900">{pageTitle}</h2>
         </div>
-      )}
+      )} */}
 
       {/* เนื้อหา - ปรับ padding ตามว่ามี page title หรือไม่ */}
       <main className={`px-6 ${isClient && !isDashboard && pageTitle ? "pt-32" : "pt-20"}`}>

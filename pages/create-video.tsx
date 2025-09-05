@@ -1,6 +1,8 @@
 // pages/create-video.tsx
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { useStep } from '@/context/StepContext';
+import StepProgress from '@/components/Layouts/StepProgress';
 
 interface VideoCreationStatus {
   _id: string;
@@ -29,17 +31,46 @@ export default function CreateVideo() {
   const [clips, setClips] = useState<Clip[]>([]);
   const [finalVideo, setFinalVideo] = useState<Clip | null>(null);
 
-  const refreshInterval = 10000;
+  const { currentStep, setCurrentStep } = useStep();
+  
+  const steps = ['อัปโหลดไฟล์', 'รายการไฟล์', 'สร้างวิดีโอ'];
 
-  useEffect(() => {
-    if (!id) return;
-    const interval = setInterval(() => checkExistingStatus(id), refreshInterval);
-    return () => clearInterval(interval);
-  }, [id]);
+  const refreshInterval = 60000;
+
+  // ส่วนที่ต้องแก้ไขใน create-video.tsx
+
+useEffect(() => {
+  if (!id) return;
+  
+  // ตรวจสอบว่า currentStep น้อยกว่า 3 หรือไม่ ถ้าใช่ ให้ set เป็น 3
+  // แต่ถ้า currentStep มากกว่าหรือเท่ากับ 3 แล้วก็ไม่ต้อง override
+  if (currentStep < 3) {
+    setCurrentStep(3);
+  }
+  
+  console.log('เช็คสถานะวิดีโอสำหรับ id:', id);
+  checkExistingStatus(id);
+  const interval = setInterval(() => checkExistingStatus(id), refreshInterval);
+  return () => clearInterval(interval); 
+}, [id, currentStep, setCurrentStep]); // เพิ่ม currentStep ใน dependency array
+
+// หรือถ้าต้องการให้ auto-detect จาก URL
+useEffect(() => {
+  if (!id) return;
+  
+  // Set step เป็น 3 เมื่ออยู่หน้า create-video
+  setCurrentStep(3);
+  
+  console.log('เช็คสถานะวิดีโอสำหรับ id:', id);
+  checkExistingStatus(id);
+  const interval = setInterval(() => checkExistingStatus(id), refreshInterval);
+  return () => clearInterval(interval); 
+}, [id, setCurrentStep]);
 
   async function checkExistingStatus(fileId: string) {
     try {
       const res = await fetch(`/api/status-wf?id=${fileId}&t=${Date.now()}`);
+      console.log('API status response:', res);
       if (!res.ok) {
         if (res.status === 404) {
           setStatus({ _id: fileId, executionId: null, status: 'idle', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
@@ -49,7 +80,7 @@ export default function CreateVideo() {
       }
 
       const data = await res.json();
-
+      console.log('API data:', data);
       setStatus({
         _id: fileId,
         executionId: data.executionId || null,
@@ -59,21 +90,40 @@ export default function CreateVideo() {
       });
 
       if (Array.isArray(data.clips)) {
-        const newClips: Clip[] = [];
-        data.clips.forEach((c: Clip) => {
-          if (c.finalVideo) {
-            setFinalVideo({ ...c });
-          } else if (c.video) {
-            newClips.push({ ...c });
-          }
-        });
+  const newClips: Clip[] = [];
+  let newFinalVideo: Clip | null = null;
 
-        setClips(prev => {
-          const existingVideos = new Set(prev.map(c => c.video));
-          const filtered = newClips.filter(c => c.video && !existingVideos.has(c.video));
-          return [...prev, ...filtered];
-        });
-      }
+  data.clips.forEach((c: Clip) => {
+    if (c.finalVideo) {
+      setFinalVideo({ ...c });
+    } else if (c.video) {
+      newClips.push({ ...c });
+    }
+  });
+
+  setClips(prev => {
+    const existingVideos = new Set(prev.map(c => c.video));
+    const filtered = newClips.filter(c => c.video && !existingVideos.has(c.video));
+    return [...prev, ...filtered];
+  });
+}
+
+      // if (Array.isArray(data.clips)) {
+      //   const newClips: Clip[] = [];
+      //   data.clips.forEach((c: Clip) => {
+      //     if (c.finalVideo) {
+      //       setFinalVideo({ ...c });
+      //     } else if (c.video) {
+      //       newClips.push({ ...c });
+      //     }
+      //   });
+
+      //   setClips(prev => {
+      //     const existingVideos = new Set(prev.map(c => c.video));
+      //     const filtered = newClips.filter(c => c.video && !existingVideos.has(c.video));
+      //     return [...prev, ...filtered];
+      //   });
+      // }
     } catch (err) {
       console.error(err);
       setStatus({ _id: fileId, executionId: null, status: 'error', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
@@ -145,6 +195,19 @@ export default function CreateVideo() {
   };
 
   return (
+    <div className="container mx-auto px-4 py-8">
+      <StepProgress
+  steps={['อัปโหลดไฟล์', 'รายการไฟล์', 'สร้างวิดีโอ']}
+  currentStep={3}
+  canGoNext={true}
+  // onNext={() => console.log('Next step')}
+  onPreview={() => router.push('/list-file')}
+  onMyVideos={() => router.push('/my-videos')}
+/>
+
+    {!status && !error && <p>กำลังโหลดสถานะ...</p>}
+    {error && <p className="text-red-600">เกิดข้อผิดพลาด: {error}</p>}
+
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
@@ -300,9 +363,12 @@ export default function CreateVideo() {
         {/* Action Button */}
         <div className="text-center">
           <button
-            disabled={loading || status?.status === 'running' || status?.status === 'succeeded'}
+            disabled={loading || 
+              status?.status === 'running' || 
+              status?.status === 'succeeded'}
             className={`inline-flex items-center space-x-3 px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
-              status?.status === 'running' || status?.status === 'succeeded'
+              status?.status === 'running' || 
+              status?.status === 'succeeded'
                 ? 'bg-gray-400 text-gray-500 cursor-not-allowed shadow-none transform-none'
                 : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
             }`}
@@ -330,7 +396,38 @@ export default function CreateVideo() {
               </>
             )}
           </button>
-          
+          {/* Next / Back Buttons */}
+{(status?.status === 'succeeded' || status?.status === 'error') && (
+  <div className="text-center mt-6 flex flex-col sm:flex-row justify-center items-center gap-4">
+    
+    {/* Back button สำหรับ error */}
+    {status.status === 'error' && (
+      <button
+        onClick={() => {
+          setCurrentStep(2); // กลับไปขั้นตอน "รายการไฟล์" หรือขั้นก่อนหน้า
+          router.push('/list-file');
+        }}
+        className="inline-flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold shadow-lg transition-all duration-300 bg-gray-200 text-gray-800 hover:bg-gray-300"
+      >
+        <span>Preview</span>
+      </button>
+    )}
+
+    {/* Next button สำหรับ succeeded / error */}
+    <button
+      onClick={() => {
+        setCurrentStep(4); // ไปขั้นตอน "วิดีโอของฉัน"
+        router.push('/my-videos');
+      }}
+      className={`inline-flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold shadow-lg transition-all duration-300
+        ${status.status === 'succeeded' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'}
+      `}
+    >
+      <span>Next</span>
+    </button>
+  </div>
+)}
+
           {(status?.status === 'running' || status?.status === 'starting') && (
             <p className="mt-3 text-sm text-gray-600">
               กระบวนการนี้อาจใช้เวลาสักครู่ หน้าจอจะอัพเดทอัตโนมัติทุก 10 วินาที
@@ -371,6 +468,7 @@ export default function CreateVideo() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }
