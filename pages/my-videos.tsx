@@ -44,6 +44,22 @@ function parseDate(value: string | { $date: string }): Date {
   return new Date(value.$date);
 }
 
+function formatDateTime(date: Date): string {
+  const datePart = date.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric'
+  });
+  const timePart = date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  return `${datePart} ${timePart}`;
+}
+
+
 // ฟังก์ชันดึง sourceImage และ promptFile ของ clip
 function getClipSource(video: HistoryVideo, clipIndex: number) {
   if (!video.folders?.subfolders?.length) {
@@ -80,6 +96,8 @@ const subfolder = subfolders[clipIndex];
     sourceImage,
     // promptFile,
   });
+
+  // ✅ ฟังก์ชันเดียวสำหรับแสดงเวลาทุกจุด
 
   // return { sourceImage, promptFile };
   return { sourceImage };
@@ -157,7 +175,7 @@ function GeneratedClips({ video, expandedClips, setExpandedClips }: {
                     <p className="text-xs text-slate-600 font-medium">Clip</p>
                   </div>
                   <p className="text-xs text-slate-500 mb-2">
-                    Created: {parseDate(clip.createdAt).toLocaleString()}
+                    Created: {formatDateTime(parseDate(clip.createdAt))}
                   </p>
                   
                   {/* ปุ่มรายละเอียดเพิ่มเติม */}
@@ -269,7 +287,7 @@ function FinalVideo({ video }: { video: HistoryVideo }) {
                 <span className="text-sm font-semibold text-emerald-700">Final Result</span>
               </div>
               <video src={videoUrl} controls className="w-full rounded-lg mb-3 shadow-sm" style={{ maxHeight: "250px" }} />
-              <p className="text-xs text-emerald-600 font-medium">Completed: {parseDate(clip.createdAt).toLocaleString()}</p>
+              <p className="text-xs text-emerald-600 font-medium">Completed: {formatDateTime(parseDate(clip.createdAt))}</p>
             </div>
           );
         })}
@@ -367,7 +385,8 @@ export default function HistoryVideos() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Uploaded {parseDate(video.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          Uploaded {formatDateTime(parseDate(video.createdAt))}
+                          {/* Uploaded {parseDate(video.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} */}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2">
@@ -408,11 +427,11 @@ export default function HistoryVideos() {
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <span className="text-slate-500 font-medium w-20">Started:</span>
-                            <span className="text-slate-700">{parseDate(video.executionIdHistory.startTime).toLocaleString()}</span>
+                            <span className="text-slate-700">{formatDateTime(parseDate(video.executionIdHistory.startTime))}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-slate-500 font-medium w-20">Ended:</span>
-                            <span className="text-slate-700">{parseDate(video.executionIdHistory.endTime).toLocaleString()}</span>
+                            <span className="text-slate-700">{formatDateTime(parseDate(video.executionIdHistory.endTime))}</span>
                           </div>
                         </div>
                       </div>

@@ -52,6 +52,21 @@ export default function UserDetailPage() {
   return diffMinutes <= 5;
 };
 
+function formatDateTime(date: Date): string {
+  const datePart = date.toLocaleDateString('en-US', { 
+   day: 'numeric',
+   month: 'short',  
+   year: 'numeric' 
+  });
+  const timePart = date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second : '2-digit',
+    hour12: false
+  });
+  return `${datePart} ${timePart}`;
+}
+  
   useEffect(() => {
     if (!userId) return;
 
@@ -209,7 +224,8 @@ const handleSave = async (data?: {
                   </span>
                 </p>
                 <p>
-                  <strong>เวลาล่าสุด: </strong> {user.lastActive ?? "ไม่มีข้อมูล"}
+                  <strong>เวลาล่าสุด: </strong>{user.lastActive ? formatDateTime(new Date(user.lastActive)) : "ไม่มีข้อมูล"}
+                  {/* <strong>เวลาล่าสุด: </strong> {user.lastActive ?? "ไม่มีข้อมูล"} */}
                 </p>
               </div>
             </div>
@@ -439,7 +455,7 @@ const handleSave = async (data?: {
                   onClick={() => alert(`เปิดดูไฟล์: ${file.originalName}`)} // เพิ่ม action ตัวอย่าง
                 >
                   <td className="px-4 py-3 text-gray-900 font-medium">{file.originalName}</td>
-                  <td className="px-4 py-3 text-gray-600">{new Date(file.createdAt).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-gray-600">{formatDateTime(new Date(file.createdAt))}</td>
                   <td className={`px-4 py-3 font-semibold ${
                     file.status.toLowerCase() === "complete"
                       ? "text-green-600"

@@ -31,14 +31,30 @@ export default function ListFile() {
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const steps = ['อัปโหลดไฟล์', 'รายการไฟล์', 'สร้างวิดีโอ'];
   const { currentStep, setCurrentStep } = useStep();
-
-  useEffect(() => {
+  
+  function formatDateTime(date: Date): string {
+  const datePart = date.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric'
+  });
+  const timePart = date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  return `${datePart} ${timePart}`;
+}
+  
+useEffect(() => {
     const storedUserId = localStorage.getItem('loggedInUser');
     if (!storedUserId) {
       setError('ไม่พบผู้ใช้งาน');
       setLoading(false);
       return;
     }
+
+  
 
     const userId: string = storedUserId;
 
@@ -232,7 +248,8 @@ export default function ListFile() {
                       </div>
                       <div className="flex items-center space-x-4 text-sm text-slate-600 mb-3">
                         <div className="flex items-center space-x-1">
-                          <span>{new Date(file.createdAt).toLocaleString('th-TH')}</span>
+                          <span>{formatDateTime(new Date(file.createdAt))}</span>
+                          {/* <span>{new Date(file.createdAt).toLocaleString('th-TH')}</span> */}
                         </div>
                       </div>
                     </div>

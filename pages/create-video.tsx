@@ -38,6 +38,20 @@ export default function CreateVideo() {
   const refreshInterval = 60000;
 
   // ส่วนที่ต้องแก้ไขใน create-video.tsx
+  function formatDateTime(date: Date): string {
+  const datePart = date.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric'
+  });
+  const timePart = date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  return `${datePart} ${timePart}`;
+}
 
 useEffect(() => {
   if (!id) return;
@@ -269,7 +283,7 @@ useEffect(() => {
               
               <div className="bg-white/70 rounded-lg p-4">
                 <p className="text-sm text-gray-500 mb-1">อัพเดทล่าสุด</p>
-                <p className="text-sm">{status?.updatedAt ? new Date(status.updatedAt).toLocaleString('th-TH') : '-'}</p>
+                <p className="text-sm">{status?.updatedAt ? formatDateTime(new Date(status.updatedAt)): '-'}</p>
               </div>
             </div>
           </div>

@@ -49,6 +49,20 @@ export default function ManageUsers() {
     return diffMinutes <= 5;
   };
 
+  function formatDateTime(date: Date): string {
+  const datePart = date.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric'
+  });
+  const timePart = date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  return `${datePart} ${timePart}`;
+}
+
   useEffect(() => {
     fetchUsers();
   }, []);
