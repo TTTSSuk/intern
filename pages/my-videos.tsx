@@ -77,6 +77,8 @@ const subfolder = subfolders[clipIndex];
   const imageFile = subfolder.files?.find(f => f.match(/\.(jpg|jpeg|png|gif)$/i)) ?? "";
   const txtFile = subfolder.files?.find(f => f.endsWith(".txt")) ?? "";
 
+  const [searchTerm, setSearchTerm] = useState("");
+
   const basePath = video.extractPath.replace("./uploads/extracted/", "");
   const sourceImage = imageFile
     ? `${BASE_VIDEO_URL}/${basePath}/${parentFolder}/${subfolder.name}/${imageFile}`

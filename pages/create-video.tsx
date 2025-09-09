@@ -326,7 +326,7 @@ useEffect(() => {
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-500">คลิป {index + 1}</span>
                       <span className="text-xs text-gray-400">
-                        {clip.createdAt ? new Date(clip.createdAt).toLocaleDateString('th-TH') : '-'}
+                        {clip.createdAt ? formatDateTime(new Date(clip.createdAt)) : '-'}
                       </span>
                     </div>
                   </div>
@@ -357,7 +357,7 @@ useEffect(() => {
                   <div>
                     <p className="font-semibold text-gray-800">วิดีโอพร้อมใช้งาน</p>
                     <p className="text-sm text-gray-600">
-                      สร้างเมื่อ: {finalVideo.createdAt ? new Date(finalVideo.createdAt).toLocaleString('th-TH') : '-'}
+                      สร้างเมื่อ: {finalVideo.createdAt ? formatDateTime(new Date(finalVideo.createdAt)) : '-'}
                     </p>
                   </div>
                   <a 
