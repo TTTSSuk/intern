@@ -324,7 +324,7 @@ useEffect(() => {
                   )}
                   <div className="p-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">คลิป {index + 1}</span>
+                      <span className="text-xs text-gray-500">Clips {index + 1}</span>
                       <span className="text-xs text-gray-400">
                         {clip.createdAt ? formatDateTime(new Date(clip.createdAt)) : '-'}
                       </span>

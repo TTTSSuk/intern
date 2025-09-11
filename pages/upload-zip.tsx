@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useStep } from '@/context/StepContext';
 
+
 export default function UploadZip() {
   const { currentStep, setCurrentStep } = useStep();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -110,15 +111,16 @@ export default function UploadZip() {
       style={{
         backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='3'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
       }} />
-        <div className="relative z-10 container mx-auto px-4 py-8">
+        {/* <div className="relative z-10 container mx-auto px-4 py-8"> */}
+        {/* <div className="min-h-screen"> */}
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold text-gray-800 mb-4">อัปโหลด ZIP ไฟล์</h1>
             <p className="text-lg text-gray-600">อัปโหลดไฟล์ ZIP ของคุณเพื่อเริ่มสร้างวิดีโอ</p>
-          </div>
+          {/* </div> */}
 
           {/* Upload Area */}
-          <div
+          {/* <div
             onClick={() => fileInputRef.current?.click()}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -128,7 +130,19 @@ export default function UploadZip() {
                 : selectedFile ? 'border-green-400 bg-green-50'
                 : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'
             }`}
-          >
+          > */}
+          <div
+  onClick={() => fileInputRef.current?.click()}
+  onDrop={handleDrop}
+  onDragOver={handleDragOver}
+  onDragLeave={handleDragLeave}
+  className={`relative border-3 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 max-w-md mx-auto ${
+    isDragOver ? 'border-blue-500 bg-blue-50 scale-105'
+      : selectedFile ? 'border-green-400 bg-green-50'
+      : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'
+  }`}
+>
+
             <input ref={fileInputRef} type="file" accept=".zip" onChange={handleFileChange} className="hidden" />
 
             {selectedFile ? (
@@ -159,7 +173,21 @@ export default function UploadZip() {
           </div>
 
           {/* Upload Button */}
-          <button
+          {/* Upload Button */}
+<div className="flex justify-center mt-6">
+  <button
+    onClick={handleUpload}
+    disabled={uploading || !selectedFile}
+    className={`w-full max-w-md py-3 px-6 rounded-2xl font-bold text-lg transition-all duration-300 shadow-lg ${
+      uploading || !selectedFile
+        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+        : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white hover:shadow-xl transform hover:-translate-y-1'
+    }`}
+  >
+    {uploading ? 'กำลังอัปโหลด...' : 'อัปโหลด ZIP'}
+  </button>
+</div>
+          {/* <button
             onClick={handleUpload}
             disabled={uploading || !selectedFile}
             className={`w-full mt-8 py-4 px-6 rounded-2xl font-bold text-lg transition-all duration-300 shadow-lg ${
@@ -169,7 +197,7 @@ export default function UploadZip() {
             }`}
           >
             {uploading ? 'กำลังอัปโหลด...' : 'อัปโหลด ZIP'}
-          </button>
+          </button> */}
 
           {/* Message */}
           {message && (
