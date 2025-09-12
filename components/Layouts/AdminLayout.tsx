@@ -1,3 +1,5 @@
+//components\Layouts\AdminLayout.tsx
+
 import { ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { AiOutlineUser } from "react-icons/ai";

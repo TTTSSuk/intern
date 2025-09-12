@@ -38,7 +38,8 @@ interface HistoryVideo {
   executionIdHistory?: ExecutionHistory;
 }
 
-const BASE_VIDEO_URL = "http://192.168.70.166:8080";
+// const BASE_VIDEO_URL = "http://192.168.70.166:8080";
+const BASE_VIDEO_URL = "http://192.168.1.109:8080";
 
 // Helper function to parse dates
 function parseDate(value: string | { $date: string }): Date {
@@ -272,6 +273,7 @@ function FinalVideo({ video }: { video: HistoryVideo }) {
 export default function HistoryVideos() {
   const [videos, setVideos] = useState<HistoryVideo[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState<string>(""); // เพิ่ม state สำหรับการค้นหา
   const [selectedClip, setSelectedClip] = useState<{
     index: number;
     clip: Clip;
@@ -293,6 +295,11 @@ export default function HistoryVideos() {
       closeModal();
     }
   };
+
+  // ฟังก์ชันสำหรับกรองวิดีโอตามการค้นหา
+  const filteredVideos = videos.filter((video) =>
+    video.originalName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -397,31 +404,87 @@ export default function HistoryVideos() {
     <div className="min-h-screen">
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                />
-              </svg>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                  />
+                </svg>
+              </div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                Video History
+              </h1>
             </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-              Video History
-            </h1>
+            
+            {/* ช่องค้นหา */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg
+                  className="w-4 h-4 text-slate-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="ค้นหาชื่อวิดีโอ..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 w-64 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm bg-white/70 backdrop-blur-sm"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <svg
+                    className="w-4 h-4 text-slate-400 hover:text-slate-600 transition-colors"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
-          <p className="text-slate-600 ml-13">Track your video processing journey</p>
+          <div className="flex items-center justify-between">
+            <p className="text-slate-600 ml-13">Track your video processing journey</p>
+            {searchTerm && (
+              <p className="text-sm text-slate-500">
+                แสดง {filteredVideos.length} จาก {videos.length} วิดีโอ
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="grid gap-6">
-          {videos.map((video, index) => {
+        {/* <div className="grid gap-6"> */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredVideos.map((video, index) => {
             const videoId = video._id.$oid;
             return (
               <div
@@ -543,6 +606,39 @@ export default function HistoryVideos() {
             );
           })}
         </div>
+
+        {/* แสดงข้อความเมื่อไม่พบผลลัพธ์ */}
+        {searchTerm && filteredVideos.length === 0 && (
+          <div className="text-center py-12">
+            <div className="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg
+                className="w-12 h-12 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-slate-700 mb-2">
+              ไม่พบวิดีโอที่ค้นหา
+            </h3>
+            <p className="text-slate-500 mb-4">
+              ลองค้นหาด้วยคำอื่น หรือล้างการค้นหาเพื่อดูวิดีโอทั้งหมด
+            </p>
+            <button
+              onClick={() => setSearchTerm("")}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              ล้างการค้นหา
+            </button>
+          </div>
+        )}
 
         {selectedClip && (
           <div
