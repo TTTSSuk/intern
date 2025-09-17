@@ -7,7 +7,7 @@ import StepProgress from '@/components/Layouts/StepProgress';
 interface VideoCreationStatus {
   _id: string;
   executionId: string | null;
-  status: 'idle' | 'starting' | 'running' | 'succeeded' | 'error' | 'unknown';
+  status: 'idle' | 'starting' | 'running' | 'succeeded' | 'error' | 'unknown' | 'queued';
   createdAt: string;
   updatedAt: string;
 }
@@ -82,26 +82,29 @@ useEffect(() => {
 }, [id, setCurrentStep]);
 
   async function checkExistingStatus(fileId: string) {
-    try {
-      const res = await fetch(`/api/status-wf?id=${fileId}&t=${Date.now()}`);
-      console.log('API status response:', res);
-      if (!res.ok) {
-        if (res.status === 404) {
-          setStatus({ _id: fileId, executionId: null, status: 'idle', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
-          return;
-        }
-        throw new Error(`API Error: ${res.status}`);
+  try {
+    const res = await fetch(`/api/status-wf?id=${fileId}&t=${Date.now()}`);
+    console.log('API status response:', res);
+    if (!res.ok) {
+      if (res.status === 404) {
+        setStatus({ _id: fileId, executionId: null, status: 'idle', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+        return;
       }
+      throw new Error(`API Error: ${res.status}`);
+    }
 
-      const data = await res.json();
-      console.log('API data:', data);
-      setStatus({
-        _id: fileId,
-        executionId: data.executionId || null,
-        status: data.status || 'unknown',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+    const data = await res.json();
+    console.log('API data:', data);
+
+    // 🆕 ใช้ queueStatus ที่ส่งมาจาก API เป็นหลัก
+    const newStatus = data.status || 'unknown'; 
+    setStatus({
+      _id: fileId,
+      executionId: data.executionId || null,
+      status: newStatus, // ใช้สถานะใหม่
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
 
       if (Array.isArray(data.clips)) {
   const newClips: Clip[] = [];
@@ -185,6 +188,8 @@ useEffect(() => {
       case 'starting':
       case 'running':
         return <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>;
+    case 'queued': // 🆕 เพิ่ม icon สำหรับ queued
+        return <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>;
       case 'succeeded':
         return <div className="w-3 h-3 rounded-full bg-green-500"></div>;
       case 'error':
@@ -202,6 +207,8 @@ useEffect(() => {
         return 'text-red-600 bg-red-50 border-red-200';
       case 'running':
       case 'starting':
+        return 'text-blue-600 bg-blue-50 border-blue-200';
+    case 'queued': // 🆕 เพิ่ม color สำหรับ queued
         return 'text-blue-600 bg-blue-50 border-blue-200';
       default:
         return 'text-gray-600 bg-gray-50 border-gray-200';
@@ -324,7 +331,7 @@ useEffect(() => {
                   )}
                   <div className="p-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Clips {index + 1}</span>
+                      <span className="text-xs text-gray-500">คลิป {index + 1}</span>
                       <span className="text-xs text-gray-400">
                         {clip.createdAt ? formatDateTime(new Date(clip.createdAt)) : '-'}
                       </span>
