@@ -31,10 +31,24 @@ const createMockRes = (): MockRes => ({
 });
 
 describe('/api/start-wf', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+  let consoleLogSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Mock console methods to avoid output and chalk dependency issues
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    
     // Reset ObjectId.isValid to default behavior
     MockObjectId.isValid.mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    // Restore console methods
+    consoleErrorSpy.mockRestore();
+    consoleLogSpy.mockRestore();
   });
 
   test('should return 405 for non-POST requests', async () => {
@@ -93,6 +107,9 @@ describe('/api/start-wf', () => {
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ error: 'HTTP error! status: 500' });
+    
+    // Verify that error was logged
+    expect(consoleErrorSpy).toHaveBeenCalledWith('❌ Failed to start workflow:', expect.any(Error));
   });
 
   test('should handle missing executionId from n8n', async () => {
@@ -106,6 +123,10 @@ describe('/api/start-wf', () => {
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ error: 'No executionId received from n8n' });
+    
+    // Verify that response and error were logged
+    expect(consoleLogSpy).toHaveBeenCalledWith('📥 Response from n8n:', {});
+    expect(consoleErrorSpy).toHaveBeenCalledWith('❌ Failed to start workflow:', expect.any(Error));
   });
 
   test('should start workflow successfully', async () => {
@@ -135,6 +156,10 @@ describe('/api/start-wf', () => {
         body: JSON.stringify({ _id: 'valid-object-id', extractPath: '/extracted/1234567890' }),
       })
     );
+
+    // Verify that success messages were logged
+    expect(consoleLogSpy).toHaveBeenCalledWith('📥 Response from n8n:', { executionId: 'test-execution-id' });
+    expect(consoleLogSpy).toHaveBeenCalledWith('💾 Saved to database successfully');
   });
 
   test('should transform extractPath correctly', async () => {
@@ -153,5 +178,9 @@ describe('/api/start-wf', () => {
         body: JSON.stringify({ _id: 'test-id', extractPath: '/extracted/test-folder-123' }),
       })
     );
+
+    // Verify logging
+    expect(consoleLogSpy).toHaveBeenCalledWith('📥 Response from n8n:', { executionId: 'test-execution-id' });
+    expect(consoleLogSpy).toHaveBeenCalledWith('💾 Saved to database successfully');
   });
 });

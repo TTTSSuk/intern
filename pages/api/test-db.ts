@@ -9,9 +9,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ลองดึงข้อมูล users ทั้งหมด
     const users = await db.collection("users").find().toArray()
 
-    return res.status(200).json({ success: true, users })
+    return (res as any).status(200).json({ success: true, users })
   } catch (error) {
     console.error("MongoDB connection error:", error)
-    return res.status(500).json({ success: false, error: "Cannot connect to MongoDB" })
+    return (res as any).status(500).json({ success: false, error: "Cannot connect to MongoDB" })
   }
 }

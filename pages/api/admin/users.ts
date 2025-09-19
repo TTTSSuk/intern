@@ -10,23 +10,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "GET") {
     try {
       const users = await usersCollection.find({}, { projection: { password: 0 } }).toArray();
-      return res.status(200).json({ success: true, users });
+      return (res as any).status(200).json({ success: true, users });
     } catch (error) {
       console.error(error);
-      return res.status(500).json({ success: false, message: "ไม่สามารถดึงข้อมูลผู้ใช้ได้" });
+      return (res as any).status(500).json({ success: false, message: "ไม่สามารถดึงข้อมูลผู้ใช้ได้" });
     }
 
   } else if (req.method === "POST") {
     const { userId, password, name } = req.body;
 
     if (!userId || !password || !name) {
-      return res.status(400).json({ success: false, message: "กรุณากรอกข้อมูลให้ครบถ้วน" });
+      return (res as any).status(400).json({ success: false, message: "กรุณากรอกข้อมูลให้ครบถ้วน" });
     }
 
     try {
       const existingUser = await usersCollection.findOne({ userId });
       if (existingUser) {
-        return res.status(409).json({ success: false, message: "User ID นี้มีอยู่แล้ว" });
+        return (res as any).status(409).json({ success: false, message: "User ID นี้มีอยู่แล้ว" });
       }
 
       await usersCollection.insertOne({
@@ -41,17 +41,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         createdAt: new Date(),
       });
 
-      return res.status(201).json({ success: true, message: "เพิ่มผู้ใช้สำเร็จ" });
+      return (res as any).status(201).json({ success: true, message: "เพิ่มผู้ใช้สำเร็จ" });
     } catch (error) {
       console.error("เพิ่มผู้ใช้ล้มเหลว:", error);
-      return res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดบนเซิร์ฟเวอร์" });
+      return (res as any).status(500).json({ success: false, message: "เกิดข้อผิดพลาดบนเซิร์ฟเวอร์" });
     }
 
   } else if (req.method === "PATCH") {
     const { userId, isActive, isSuspended, suspensionReason, tokens, reason } = req.body;
 
     if (!userId) {
-      return res.status(400).json({ success: false, message: "กรุณาระบุ userId" });
+      return (res as any).status(400).json({ success: false, message: "กรุณาระบุ userId" });
     }
 
     const updateFields: any = {};
@@ -63,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (typeof tokens === "number") {
       const user = await usersCollection.findOne({ userId });
       if (!user) {
-        return res.status(404).json({ success: false, message: "ไม่พบผู้ใช้" });
+        return (res as any).status(404).json({ success: false, message: "ไม่พบผู้ใช้" });
       }
 
       const oldTokens = user.tokens || 0;
@@ -86,24 +86,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (Object.keys(updateFields).length === 0) {
-      return res.status(400).json({ success: false, message: "ไม่มีข้อมูลที่จะอัปเดต" });
+      return (res as any).status(400).json({ success: false, message: "ไม่มีข้อมูลที่จะอัปเดต" });
     }
 
     try {
       const result = await usersCollection.updateOne({ userId }, { $set: updateFields });
 
       if (result.modifiedCount === 1) {
-        return res.status(200).json({ success: true, message: "อัปเดตสถานะผู้ใช้สำเร็จ" });
+        return (res as any).status(200).json({ success: true, message: "อัปเดตสถานะผู้ใช้สำเร็จ" });
       } else {
-        return res.status(404).json({ success: false, message: "ไม่พบผู้ใช้" });
+        return (res as any).status(404).json({ success: false, message: "ไม่พบผู้ใช้" });
       }
     } catch (error) {
       console.error(error);
-      return res.status(500).json({ success: false, message: "ไม่สามารถอัปเดตสถานะได้" });
+      return (res as any).status(500).json({ success: false, message: "ไม่สามารถอัปเดตสถานะได้" });
     }
 
   } else {
-    res.setHeader("Allow", ["GET", "POST", "PATCH"]);
-    return res.status(405).end(`Method ${req.method} ไม่ได้รับอนุญาต`);
+    (res as any).setHeader("Allow", ["GET", "POST", "PATCH"]);
+    return (res as any).status(405).end(`Method ${req.method} ไม่ได้รับอนุญาต`);
   }
 }

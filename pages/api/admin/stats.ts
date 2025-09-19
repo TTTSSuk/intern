@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const files = await db.collection("listfile").find({}).toArray();
     const totalVideos = files.reduce((acc, file) => acc + (file.clips?.length || 0), 0);
 
-    res.status(200).json({
+    (res as any).status(200).json({
       totalUsers,
       onlineUsers,
       suspendedUsers,
@@ -34,6 +34,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error fetching stats" });
+    (res as any).status(500).json({ message: "Error fetching stats" });
   }
 }

@@ -4,8 +4,8 @@ import clientPromise from '@/lib/mongodb';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
-    return res.status(405).json({ message: `Method ${req.method} not allowed` });
+    (res as any).setHeader('Allow', ['POST']);
+    return (res as any).status(405).json({ message: `Method ${req.method} not allowed` });
   }
 
   const { currentPassword, newPassword } = req.body;
@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const userId = req.body.userId || '';
 
   if (!userId || !currentPassword || !newPassword) {
-    return res.status(400).json({ message: 'กรุณาส่ง userId, รหัสผ่านปัจจุบัน และรหัสผ่านใหม่ให้ครบ' });
+    return (res as any).status(400).json({ message: 'กรุณาส่ง userId, รหัสผ่านปัจจุบัน และรหัสผ่านใหม่ให้ครบ' });
   }
 
   try {
@@ -25,11 +25,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const user = await usersCollection.findOne({ userId });
 
     if (!user) {
-      return res.status(404).json({ message: 'ไม่พบผู้ใช้' });
+      return (res as any).status(404).json({ message: 'ไม่พบผู้ใช้' });
     }
 
     if (user.password !== currentPassword) {
-      return res.status(401).json({ message: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' });
+      return (res as any).status(401).json({ message: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' });
     }
 
     // อัปเดตรหัสผ่านใหม่
@@ -38,9 +38,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { $set: { password: newPassword } }
     );
 
-    return res.status(200).json({ message: 'เปลี่ยนรหัสผ่านสำเร็จ' });
+    return (res as any).status(200).json({ message: 'เปลี่ยนรหัสผ่านสำเร็จ' });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์' });
+    return (res as any).status(500).json({ message: 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์' });
   }
 }

@@ -13,7 +13,7 @@ export const config = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return (res as any).status(405).json({ message: 'Method not allowed' });
   }
 
   const uploadDir = path.join(process.cwd(), '/public/uploads');
@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   form.parse(req, async (err: any, fields: Fields, files: Files) => {
     if (err) {
       console.error('Form parse error:', err);
-      return res.status(500).json({ message: 'Error parsing the form' });
+      return (res as any).status(500).json({ message: 'Error parsing the form' });
     }
 
     const name = fields.name?.toString() || '';
@@ -59,16 +59,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
 
       if (result.matchedCount === 0) {
-        return res.status(404).json({ message: 'ไม่พบผู้ใช้' });
+        return (res as any).status(404).json({ message: 'ไม่พบผู้ใช้' });
       }
 
-      return res.status(200).json({
+      return (res as any).status(200).json({
         message: 'โปรไฟล์ถูกอัปเดตแล้ว',
         avatarUrl,
       });
     } catch (error) {
       console.error(error);
-      return res.status(500).json({ message: 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์' });
+      return (res as any).status(500).json({ message: 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์' });
     }
   });
 }

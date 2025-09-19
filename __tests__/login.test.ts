@@ -2,54 +2,39 @@
 import httpMocks from 'node-mocks-http';
 import handler from '../pages/api/login';
 
-// #1: Mock Dependencies
-// Mock MongoDB client and the global __mongoMocks object
-jest.mock('@/lib/mongodb', () => {
-  if (!global.__mongoMocks) {
-    global.__mongoMocks = {
-      mockToArray: jest.fn(),
-      mockSort: jest.fn(),
-      mockProject: jest.fn(),
-      mockFind: jest.fn(),
-      mockFindOne: jest.fn(),
-      mockUpdateOne: jest.fn(),
-      mockInsertOne: jest.fn(),
-      mockCollection: jest.fn(),
-      mockDb: jest.fn(),
-      mockClient: {},
-      MockObjectId: Object.assign(jest.fn(() => ({})), { isValid: jest.fn(() => true) }),
-    };
-  }
-  return {
-    __esModule: true,
-    default: jest.fn(() => global.__mongoMocks.mockClient),
-  };
-});
-
-// #2: Setup Test Suite
 describe('User Login API Endpoint', () => {
   let mockRequest: httpMocks.MockRequest<any>;
   let mockResponse: httpMocks.MockResponse<any>;
+  let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     mockRequest = httpMocks.createRequest();
     mockResponse = httpMocks.createResponse();
+    
+    // Mock console.error to avoid chalk dependency issues
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    
     jest.clearAllMocks();
 
     // Setup the mock MongoDB chain for `login.ts`
-    global.__mongoMocks.mockCollection.mockReturnValue({
-      findOne: global.__mongoMocks.mockFindOne,
-      updateOne: global.__mongoMocks.mockUpdateOne,
+    const { mockFindOne, mockUpdateOne, mockCollection, mockDb, mockClient } = global.__mongoMocks;
+    
+    mockCollection.mockReturnValue({
+      findOne: mockFindOne,
+      updateOne: mockUpdateOne,
     });
-    global.__mongoMocks.mockDb.mockReturnValue({
-      collection: global.__mongoMocks.mockCollection,
+    mockDb.mockReturnValue({
+      collection: mockCollection,
     });
-    global.__mongoMocks.mockClient = {
-      db: global.__mongoMocks.mockDb,
-    };
+    mockClient.db = mockDb;
   });
 
-  // #3: Test Cases
+  afterEach(() => {
+    // Restore console.error after each test
+    consoleErrorSpy.mockRestore();
+  });
+
+  // Test Cases
   
   // Case 1: Reject non-POST methods
   test('should return 405 if method is not POST', async () => {
@@ -165,10 +150,11 @@ describe('User Login API Endpoint', () => {
       userId: 'testuser',
       name: 'Test User',
     });
-    // Verify that updateOne was called correctly
+    
+    // Verify that updateOne was called to update lastActive
     expect(global.__mongoMocks.mockUpdateOne).toHaveBeenCalledWith(
       { userId: 'testuser' },
-      { '$set': expect.any(Object) }
+      { '$set': { lastActive: expect.any(Date) } }
     );
   });
 
@@ -183,5 +169,8 @@ describe('User Login API Endpoint', () => {
 
     expect(mockResponse._getStatusCode()).toBe(500);
     expect(mockResponse._getJSONData()).toEqual({ message: 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์' });
+    
+    // Verify that error was logged
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(Error));
   });
 });

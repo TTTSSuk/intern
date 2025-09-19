@@ -4,13 +4,13 @@ import { ObjectId } from 'mongodb';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'PATCH') {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return (res as any).status(405).json({ message: 'Method not allowed' });
   }
 
   const { fileId } = req.body;
 
   if (!fileId) {
-    return res.status(400).json({ message: 'Missing fileId' });
+    return (res as any).status(400).json({ message: 'Missing fileId' });
   }
 
   try {
@@ -24,12 +24,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     if (result.modifiedCount === 1) {
-      return res.status(200).json({ message: 'ลบไฟล์เรียบร้อย (อัปเดตสถานะ)' });
+      return (res as any).status(200).json({ message: 'ลบไฟล์เรียบร้อย (อัปเดตสถานะ)' });
     } else {
-      return res.status(404).json({ message: 'ไม่พบไฟล์' });
+      return (res as any).status(404).json({ message: 'ไม่พบไฟล์' });
     }
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+    return (res as any).status(500).json({ message: 'เกิดข้อผิดพลาด' });
   }
 }

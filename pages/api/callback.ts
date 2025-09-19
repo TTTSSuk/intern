@@ -4,7 +4,7 @@ import clientPromise from '@/lib/mongodb';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ status: 'Method not allowed' });
+    return (res as any).status(405).json({ status: 'Method not allowed' });
   }
 
   interface Clip {
@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log(`[callback] executionId: ${executionId}, video: ${video}, resultVideo: ${resultVideo}`);
   
   if (!executionId || (!video && !resultVideo)) {
-    return res.status(400).json({ status: 'error', message: 'Missing required fields' });
+    return (res as any).status(400).json({ status: 'error', message: 'Missing required fields' });
   }
 
   try {
@@ -56,10 +56,10 @@ if (resultVideo) {
   );
 }
 
-    return res.status(200).json({ status: 'ok' });
+    return (res as any).status(200).json({ status: 'ok' });
   } catch (err) {
     console.error('❌ MongoDB Error:', err);
     
-    return res.status(500).json({ status: 'error', message: 'Failed to update DB' });
+    return (res as any).status(500).json({ status: 'error', message: 'Failed to update DB' });
   }
 }

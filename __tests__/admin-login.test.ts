@@ -2,54 +2,36 @@
 import httpMocks from 'node-mocks-http';
 import handler from '../pages/api/admin-login';
 
-// Mock `clientPromise`
-jest.mock('@/lib/mongodb', () => {
-    // ให้มีการกำหนดค่าเริ่มต้นของ __mongoMocks และ mock clientPromise
-    if (!global.__mongoMocks) {
-        global.__mongoMocks = {
-            mockToArray: jest.fn(),
-            mockSort: jest.fn(),
-            mockProject: jest.fn(),
-            mockFind: jest.fn(),
-            mockFindOne: jest.fn(),
-            mockUpdateOne: jest.fn(),
-            mockInsertOne: jest.fn(),
-            mockCollection: jest.fn(),
-            mockDb: jest.fn(),
-            mockClient: {},
-            MockObjectId: Object.assign(jest.fn(() => ({})), { isValid: jest.fn(() => true) })
-        };
-        // เพิ่ม property isValid ที่ถูกต้องตาม type definition
-        global.__mongoMocks.MockObjectId.isValid = jest.fn(() => true); 
-    }
-    return {
-        __esModule: true,
-        default: jest.fn(() => global.__mongoMocks.mockClient),
-    };
-});
-
 describe('Admin Login API Endpoint', () => {
     let mockRequest: httpMocks.MockRequest<any>;
     let mockResponse: httpMocks.MockResponse<any>;
+    let consoleErrorSpy: jest.SpyInstance;
 
-    // เตรียม mock ก่อนการทดสอบแต่ละครั้ง
     beforeEach(() => {
         mockRequest = httpMocks.createRequest();
         mockResponse = httpMocks.createResponse();
         
+        // Mock console.error to avoid chalk dependency issues
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        
         // Reset mocks
         jest.clearAllMocks();
 
-        // Setup mock collection, db and client
-        global.__mongoMocks.mockCollection.mockReturnValue({
-            findOne: global.__mongoMocks.mockFindOne,
+        // Setup mock collection, db and client using global mocks
+        const { mockFindOne, mockCollection, mockDb, mockClient } = global.__mongoMocks;
+        
+        mockCollection.mockReturnValue({
+            findOne: mockFindOne,
         });
-        global.__mongoMocks.mockDb.mockReturnValue({
-            collection: global.__mongoMocks.mockCollection,
+        mockDb.mockReturnValue({
+            collection: mockCollection,
         });
-        global.__mongoMocks.mockClient = {
-            db: global.__mongoMocks.mockDb,
-        };
+        mockClient.db = mockDb;
+    });
+
+    afterEach(() => {
+        // Restore console.error after each test
+        consoleErrorSpy.mockRestore();
     });
 
     // Case 1: ทดสอบเมธอดที่ไม่ใช่ POST
@@ -58,9 +40,11 @@ describe('Admin Login API Endpoint', () => {
 
         await handler(mockRequest, mockResponse);
 
-        // ตรวจสอบสถานะโค้ดและ message
         expect(mockResponse._getStatusCode()).toBe(405);
-        expect(mockResponse._getHeaders()).toEqual({ 'Allow': 'POST' });
+        expect(mockResponse._getHeaders()).toEqual({ 
+            'allow': ['POST'], 
+            'content-type': 'application/json' 
+        });
         expect(mockResponse._getJSONData()).toEqual({ message: 'Method GET ไม่ได้รับอนุญาต' });
     });
 
@@ -71,7 +55,6 @@ describe('Admin Login API Endpoint', () => {
 
         await handler(mockRequest, mockResponse);
 
-        // ตรวจสอบสถานะโค้ดและ message
         expect(mockResponse._getStatusCode()).toBe(400);
         expect(mockResponse._getJSONData()).toEqual({ message: 'กรุณาใส่ adminId และ password' });
     });
@@ -139,5 +122,8 @@ describe('Admin Login API Endpoint', () => {
         
         expect(mockResponse._getStatusCode()).toBe(500);
         expect(mockResponse._getJSONData()).toEqual({ message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
+        
+        // Verify that error was logged
+        expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(Error));
     });
 });

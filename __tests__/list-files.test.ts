@@ -4,30 +4,7 @@ import handler from '../pages/api/list-files';
 import { readFolderRecursive } from '@/lib/readFolderRecursive';
 import path from 'path';
 
-// #1: Mock Dependencies
-// Mock MongoDB client and the global __mongoMocks object
-jest.mock('@/lib/mongodb', () => {
-    if (!global.__mongoMocks) {
-        global.__mongoMocks = {
-            mockToArray: jest.fn(),
-            mockSort: jest.fn(),
-            mockProject: jest.fn(),
-            mockFind: jest.fn(),
-            mockFindOne: jest.fn(),
-            mockUpdateOne: jest.fn(),
-            mockInsertOne: jest.fn(),
-            mockCollection: jest.fn(),
-            mockDb: jest.fn(),
-            mockClient: {},
-            MockObjectId: Object.assign(jest.fn(() => ({})), { isValid: jest.fn(() => true) }),        };
-    }
-    return {
-        __esModule: true,
-        default: jest.fn(() => global.__mongoMocks.mockClient),
-    };
-});
-
-// Mock readFolderRecursive to simulate file system reads
+// Mock readFolderRecursive (MongoDB is already mocked in jest.setup.js)
 jest.mock('@/lib/readFolderRecursive', () => ({
     readFolderRecursive: jest.fn(),
 }));
@@ -35,29 +12,49 @@ jest.mock('@/lib/readFolderRecursive', () => ({
 // Mock path.resolve to avoid real file system access
 jest.spyOn(path, 'resolve').mockImplementation((...args: string[]) => args.join('/'));
 
-// #2: Setup Test Suite
 describe('List Files API Endpoint', () => {
     let mockRequest: httpMocks.MockRequest<any>;
     let mockResponse: httpMocks.MockResponse<any>;
 
     beforeEach(() => {
+        // Create fresh mock request/response for each test
         mockRequest = httpMocks.createRequest();
         mockResponse = httpMocks.createResponse();
+        
+        // Clear all mocks
         jest.clearAllMocks();
 
-        // Setup the mock MongoDB chain to allow for fluid testing
-        global.__mongoMocks.mockToArray.mockResolvedValue([]);
-        global.__mongoMocks.mockSort.mockReturnValue({ toArray: global.__mongoMocks.mockToArray });
-        global.__mongoMocks.mockProject.mockReturnValue({ sort: global.__mongoMocks.mockSort });
-        global.__mongoMocks.mockFind.mockReturnValue({ project: global.__mongoMocks.mockProject });
-        global.__mongoMocks.mockCollection.mockReturnValue({ find: global.__mongoMocks.mockFind });
-        global.__mongoMocks.mockDb.mockReturnValue({ collection: global.__mongoMocks.mockCollection });
-        global.__mongoMocks.mockClient = { db: global.__mongoMocks.mockDb };
+        // Reset MongoDB mocks to default behavior (using global mocks from jest.setup.js)
+        const { 
+            mockToArray, 
+            mockSort, 
+            mockProject, 
+            mockFind, 
+            mockCollection, 
+            mockDb,
+            mockClient 
+        } = global.__mongoMocks;
+        
+        // Setup the MongoDB chain
+        mockToArray.mockResolvedValue([]);
+        mockSort.mockReturnValue({ toArray: mockToArray });
+        mockProject.mockReturnValue({ 
+            sort: mockSort, 
+            toArray: mockToArray 
+        });
+        mockFind.mockReturnValue({ 
+            sort: mockSort, 
+            project: mockProject,
+            toArray: mockToArray
+        });
+        mockCollection.mockReturnValue({ find: mockFind });
+        mockDb.mockReturnValue({ collection: mockCollection });
+        
+        // Ensure mockClient.db points to our mocked db
+        mockClient.db = mockDb;
     });
 
-    // #3: Test Cases
-    
-    // Case 1: Reject non-GET methods
+    // Test 1: Reject non-GET methods
     test('should return 405 if method is not GET', async () => {
         mockRequest.method = 'POST';
 
@@ -67,10 +64,10 @@ describe('List Files API Endpoint', () => {
         expect(mockResponse._getJSONData()).toEqual({ message: 'Method not allowed' });
     });
 
-    // Case 2: Reject request with no userId
+    // Test 2: Reject request with no userId
     test('should return 400 if userId is missing from query', async () => {
         mockRequest.method = 'GET';
-        mockRequest.query = {};
+        mockRequest.query = {}; // No userId
 
         await handler(mockRequest, mockResponse);
 
@@ -78,18 +75,18 @@ describe('List Files API Endpoint', () => {
         expect(mockResponse._getJSONData()).toEqual({ message: 'User ID is required' });
     });
 
-    // Case 3: Successfully fetch files with pre-existing folder data
+    // Test 3: Successfully fetch files with pre-existing folder data
     test('should fetch and process files with pre-existing folders data from DB', async () => {
         mockRequest.method = 'GET';
         mockRequest.query = { userId: 'user123' };
 
         const mockRawFiles = [{
-            _id: '60c72b2f9b1d8e001c1f7b8c',
+            _id: { toString: () => '60c72b2f9b1d8e001c1f7b8c' },
             userId: 'user123',
             originalName: 'test1.zip',
             extractPath: 'uploads/extracted/folder1',
             status: 'done',
-            createdAt: new Date(),
+            createdAt: new Date('2023-01-01'),
             clips: [{ name: 'clip1.mp4' }],
             folders: {
                 files: ['image.png', 'video.mp4'],
@@ -97,34 +94,40 @@ describe('List Files API Endpoint', () => {
             },
         }];
 
+        // Override the mockToArray for this specific test
         global.__mongoMocks.mockToArray.mockResolvedValueOnce(mockRawFiles);
 
         await handler(mockRequest, mockResponse);
 
         const responseData = mockResponse._getJSONData();
-        const file = responseData.files[0];
-
+        
         expect(mockResponse._getStatusCode()).toBe(200);
+        expect(responseData.files).toHaveLength(1);
+        
+        const file = responseData.files[0];
         expect(file.videoCreated).toBe(true);
         expect(file.folders[0].files).toEqual(['image.png']); // .mp4 should be filtered out
         expect(readFolderRecursive).not.toHaveBeenCalled(); // Should not read from disk
     });
     
-    // Case 4: Successfully fetch files and read folder data from disk
+    // Test 4: Successfully fetch files and read folder data from disk
     test('should fetch and read folder structure from disk if not in DB', async () => {
         mockRequest.method = 'GET';
         mockRequest.query = { userId: 'user456' };
 
         const mockRawFiles = [{
-            _id: '60c72b2f9b1d8e001c1f7b8d',
+            _id: { toString: () => '60c72b2f9b1d8e001c1f7b8d' },
             userId: 'user456',
             originalName: 'test2.zip',
             extractPath: 'uploads/extracted/folder2',
             status: 'pending',
-            createdAt: new Date(),
+            createdAt: new Date('2023-01-02'),
+            // No folders field - should read from disk
         }];
 
         global.__mongoMocks.mockToArray.mockResolvedValueOnce(mockRawFiles);
+        
+        // Mock the file system read
         (readFolderRecursive as jest.Mock).mockReturnValue({
             files: ['file1.txt', 'file2.mp4', 'image.jpeg'],
             subfolders: [{ name: 'sub', files: ['sub-file.png', 'sub-vid.mp4'], subfolders: [] }],
@@ -133,19 +136,24 @@ describe('List Files API Endpoint', () => {
         await handler(mockRequest, mockResponse);
 
         const responseData = mockResponse._getJSONData();
-        const file = responseData.files[0];
-
+        
         expect(mockResponse._getStatusCode()).toBe(200);
         expect(readFolderRecursive).toHaveBeenCalled(); // Should read from disk
-        expect(file.folders[0].files).toEqual(['file1.txt', 'image.jpeg']);
-        expect(file.folders[0].subfolders[0].files).toEqual(['sub-file.png']);
+        
+        const file = responseData.files[0];
+        expect(file.folders[0].files).toEqual(['file1.txt', 'image.jpeg']); // mp4 filtered out
+        expect(file.folders[0].subfolders[0].files).toEqual(['sub-file.png']); // mp4 filtered out
     });
 
-    // Case 5: Handle internal server error
+    // Test 5: Handle internal server error
     test('should return 500 if an internal server error occurs', async () => {
         mockRequest.method = 'GET';
         mockRequest.query = { userId: 'user999' };
 
+        // Mock console.error to avoid chalk dependency issue
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+        // Make the find method throw an error
         global.__mongoMocks.mockFind.mockImplementation(() => {
             throw new Error('Database connection failed');
         });
@@ -154,5 +162,11 @@ describe('List Files API Endpoint', () => {
 
         expect(mockResponse._getStatusCode()).toBe(500);
         expect(mockResponse._getJSONData()).toEqual({ message: 'Failed to fetch files' });
+        
+        // Verify that error was logged
+        expect(consoleSpy).toHaveBeenCalledWith('❌ Error fetching files:', expect.any(Error));
+        
+        // Restore console.error
+        consoleSpy.mockRestore();
     });
 });

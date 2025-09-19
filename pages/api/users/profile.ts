@@ -3,12 +3,12 @@ import clientPromise from '@/lib/mongodb';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return (res as any).status(405).json({ message: 'Method not allowed' });
   }
 
   const userId = req.query.userId;
   if (!userId || typeof userId !== 'string') {
-    return res.status(400).json({ message: 'Missing or invalid userId' });
+    return (res as any).status(400).json({ message: 'Missing or invalid userId' });
   }
 
   try {
@@ -17,10 +17,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const user = await db.collection('users').findOne({ userId });
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return (res as any).status(404).json({ message: 'User not found' });
     }
 
-    return res.status(200).json({
+    return (res as any).status(200).json({
       user: {
         userId: user.userId,
         name: user.name,
@@ -29,6 +29,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Internal server error' });
+    return (res as any).status(500).json({ message: 'Internal server error' });
   }
 }

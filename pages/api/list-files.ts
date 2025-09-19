@@ -1,3 +1,4 @@
+//pages/api/list-files.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import path from 'path';
@@ -15,7 +16,7 @@ interface VideoFile {
   originalFilePath?: string;
 }
 
-// Add this function to your file
+// Filter out .mp4 files from folder structure
 function filterVideoFiles(folders: Folder[]): Folder[] {
   return folders.map(folder => {
     const newFolder = { ...folder };
@@ -30,8 +31,14 @@ function filterVideoFiles(folders: Folder[]): Folder[] {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Only allow GET requests
   if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return (res as any).status(405).json({ message: 'Method not allowed' });
+  }
+
+  // Validate userId is provided
+  if (!req.query.userId) {
+    return (res as any).status(400).json({ message: 'User ID is required' });
   }
 
   try {
@@ -40,6 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const db = client.db();
     const videosCollection = db.collection('listfile');
 
+    // Fetch files from database
     const rawFiles = await videosCollection
       .find(
         { userId, status: { $ne: 'deleted' } },
@@ -59,6 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .sort({ createdAt: -1 })
       .toArray();
 
+    // Process each file and add computed fields
     const filesWithProcessedData = rawFiles.map(doc => {
       const videoCreated = !!doc.clips;
       const originalFilePath = `/uploads/${doc.originalName}`;
@@ -66,6 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const fullExtractPath = path.resolve(process.cwd(), doc.extractPath);
       let foldersToDisplay: Folder[] = [];
 
+      // Use existing folder data from DB if available, otherwise read from disk
       if (doc.folders) {
         const folderStructure = { name: path.basename(doc.extractPath), ...doc.folders };
         foldersToDisplay = [folderStructure as Folder];
@@ -78,6 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
       
+      // Filter out .mp4 files from the folder structure
       if (foldersToDisplay.length > 0) {
         foldersToDisplay = filterVideoFiles(foldersToDisplay);
       }
@@ -95,10 +106,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
     });
 
-    return res.status(200).json({ files: filesWithProcessedData });
+    return (res as any).status(200).json({ files: filesWithProcessedData });
   } catch (error) {
     console.error('❌ Error fetching files:', error);
-    return res.status(500).json({ message: 'Failed to fetch files' });
+    return (res as any).status(500).json({ message: 'Failed to fetch files' });
   }
 }
 

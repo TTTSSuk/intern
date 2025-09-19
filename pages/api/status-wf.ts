@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const apiBase = process.env.N8N_API_BASE_URL;
 
   if (!apiKey || !apiBase) {
-    return res.status(500).json({ error: 'N8N API key or base URL is not configured' });
+    return (res as any).status(500).json({ error: 'N8N API key or base URL is not configured' });
   }
 
   try {
@@ -29,17 +29,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       doc = await collection.findOne({ executionId: execId });
       if (doc) documentId = doc._id.toString();
     } else if (id) {
-      if (!ObjectId.isValid(id as string)) return res.status(400).json({ error: 'Invalid file ID format' });
+      if (!ObjectId.isValid(id as string)) return (res as any).status(400).json({ error: 'Invalid file ID format' });
 
       doc = await collection.findOne({ _id: new ObjectId(id as string) });
-      if (!doc) return res.status(404).json({ error: 'File not found', executionId: null, status: 'idle' });
+      if (!doc) return (res as any).status(404).json({ error: 'File not found', executionId: null, status: 'idle' });
 
-      if (!doc.executionId) return res.status(200).json({ executionId: null, status: 'idle', finished: false, documentId: id });
+      if (!doc.executionId) return (res as any).status(200).json({ executionId: null, status: 'idle', finished: false, documentId: id });
 
       execId = doc.executionId;
       documentId = id as string;
     } else {
-      return res.status(400).json({ error: 'Missing id or executionId' });
+      return (res as any).status(400).json({ error: 'Missing id or executionId' });
     }
 
     // เรียก N8N API
@@ -49,8 +49,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!response.ok) {
       const errorText = await response.text();
-      if (response.status === 404) return res.status(200).json({ executionId: execId, status: 'idle', finished: true, documentId });
-      return res.status(response.status).json({ error: `N8N API error: ${errorText}` });
+      if (response.status === 404) return (res as any).status(200).json({ executionId: execId, status: 'idle', finished: true, documentId });
+      return (res as any).status(response.status).json({ error: `N8N API error: ${errorText}` });
     }
 
     const data = await response.json();
@@ -62,13 +62,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (finished) {
       status = rawStatus === 'success' || rawStatus === 'succeeded' ? 'succeeded' : 'error';
     } else {
-      status = ['running','pending','inprogress'].includes(rawStatus) ? 'running' :
-               ['idle','waiting'].includes(rawStatus) ? 'idle' : 'running';
+      status = ['running','pending','inprogress'].includes(rawStatus) ? 'running' : 'running';
     }
 
     // 🔹 ดึง clips จาก MongoDB เสมอ
-let clips: { video?: string; finalVideo?: string; createdAt?: Date }[] = doc?.clips ?? [];
-console.log(`[status-wf] fileId: ${documentId}, execId: ${execId}, status: ${status}, finished: ${finished}`);
+    let clips: { video?: string; finalVideo?: string; createdAt?: Date }[] = doc?.clips ?? [];
+    console.log(`[status-wf] fileId: ${documentId}, execId: ${execId}, status: ${status}, finished: ${finished}`);
 
 
     // 🔹 update history ถ้า workflow finished
@@ -79,11 +78,11 @@ console.log(`[status-wf] fileId: ${documentId}, execId: ${execId}, status: ${sta
       await updateExecutionHistory(documentId, execId, startTime, finalStatus, errorMessage);
     }
 
-    return res.status(200).json({ status, executionId: execId, finished, ...(documentId && { documentId }), clips });
+    return (res as any).status(200).json({ status, executionId: execId, finished, ...(documentId && { documentId }), clips });
 
   } catch (error) {
     console.error('Internal server error:', error);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return (res as any).status(500).json({ error: 'Internal Server Error' });
   }
 }
 

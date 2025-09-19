@@ -19,6 +19,7 @@ const mockDb = jest.fn(() => ({
   collection: mockCollection,
 }));
 
+
 const mockClient = {
   db: mockDb,
   connect: jest.fn(async function () {

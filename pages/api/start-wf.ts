@@ -22,20 +22,20 @@ interface ExecutionRecord {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<Data>
+  res: NextApiResponse
 ) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return (res as any).status(405).json({ error: 'Method not allowed' });
   }
 
   const { _id } = req.body;
 
 if (!_id) {
-  return res.status(400).json({ error: '_id is required' });
+  return (res as any).status(400).json({ error: '_id is required' });
 }
 
 if (!ObjectId.isValid(_id)) {
-  return res.status(400).json({ error: 'Invalid _id format' });
+  return (res as any).status(400).json({ error: 'Invalid _id format' });
 } 
 
   try {
@@ -46,7 +46,7 @@ if (!ObjectId.isValid(_id)) {
 
     const doc = await collection.findOne({ _id: new ObjectId(_id) });
     if (!doc) {
-      return res.status(404).json({ error: 'File not found' });
+      return (res as any).status(404).json({ error: 'File not found' });
     }
     const extractPath = doc.extractPath; // "./uploads/extracted/1753772754637"
 
@@ -78,14 +78,14 @@ const response = await fetch('http://localhost:5678/webhook/start-wf', {
     // บันทึก executionId, status, startTime ลง MongoDB (แบบเดิม)
     await saveToDatabase(_id, executionId, 'started', startTime);
 
-    res.status(200).json({
+    (res as any).status(200).json({
       message: 'Workflow started and saved successfully!',
       executionId,
       _id,
     });
   } catch (err) {
     console.error('❌ Failed to start workflow:', err);
-    return res.status(500).json({
+    return (res as any).status(500).json({
       error: err instanceof Error ? err.message : 'Failed to start workflow',
     });
   }

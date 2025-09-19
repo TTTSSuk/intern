@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { userId } = req.query;
 
     if (!userId || typeof userId !== "string") {
-      return res.status(400).json({ success: false, message: "userId ไม่ถูกต้อง" });
+      return (res as any).status(400).json({ success: false, message: "userId ไม่ถูกต้อง" });
     }
 
     try {
@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
 
       if (!user) {
-        return res.status(404).json({ success: false, message: "ไม่พบผู้ใช้" });
+        return (res as any).status(404).json({ success: false, message: "ไม่พบผู้ใช้" });
       }
 
        // ดึงไฟล์ที่ผู้ใช้อัปโหลดมา
@@ -39,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         createdAt: file.createdAt,
       }));
 
-      return res.status(200).json({
+      return (res as any).status(200).json({
         success: true,
         user: {
           ...user,
@@ -48,10 +48,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     } catch (error) {
       console.error("Fetch user error:", error);
-      return res.status(500).json({ success: false, message: "เกิดข้อผิดพลาด" });
+      return (res as any).status(500).json({ success: false, message: "เกิดข้อผิดพลาด" });
     }
   } else {
-    res.setHeader("Allow", ["GET"]);
-    return res.status(405).end(`Method ${req.method} ไม่ได้รับอนุญาต`);
+    (res as any).setHeader("Allow", ["GET"]);
+    return (res as any).status(405).end(`Method ${req.method} ไม่ได้รับอนุญาต`);
   }
 }

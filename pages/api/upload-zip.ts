@@ -15,7 +15,7 @@ export const config = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return (res as any).status(405).json({ message: 'Method not allowed' });
   }
 
   const form = formidable({ uploadDir: './uploads', keepExtensions: true });
@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   form.parse(req, async (err, fields, files) => {
     if (err) {
       console.error('❌ Form parse error:', err);
-      return res.status(500).json({ message: 'Form parsing error' });
+      return (res as any).status(500).json({ message: 'Form parsing error' });
     }
 
     try {
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const zipFiles = files.zipfile;
       if (!zipFiles || (Array.isArray(zipFiles) && zipFiles.length === 0)) {
-        return res.status(400).json({ message: 'No file uploaded' });
+        return (res as any).status(400).json({ message: 'No file uploaded' });
       }
       const zipFile = Array.isArray(zipFiles) ? zipFiles[0] : zipFiles;
 
@@ -65,10 +65,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
       await videosCollection.insertOne(videoDoc);
 
-      return res.status(200).json({ message: 'แตกไฟล์ ZIP สำเร็จ', path: extractPath });
+      return (res as any).status(200).json({ message: 'แตกไฟล์ ZIP สำเร็จ', path: extractPath });
     } catch (error) {
       console.error('❌ Extract error:', error);
-      return res.status(500).json({ message: 'Error extracting ZIP' });
+      return (res as any).status(500).json({ message: 'Error extracting ZIP' });
     }
   });
 }
