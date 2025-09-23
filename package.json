@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest"
+    "test": "jest",
+    "queue:dev": "tsx watch lib/run-queue.ts",
+    "queue:start": "tsx lib/run-queue.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -16,14 +18,17 @@
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
     "@nestjs/jwt": "^11.0.0",
+    "@types/node-cron": "^3.0.11",
     "adm-zip": "^0.5.16",
     "bcrypt": "^6.0.0",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
+    "dotenv": "^17.2.2",
     "formidable": "^3.5.4",
     "lucide-react": "^0.525.0",
     "mongodb": "^6.17.0",
     "next": "15.3.5",
+    "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -52,6 +57,7 @@
     "tailwindcss": "^4.1.11",
     "ts-jest": "^29.4.2",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }
 }

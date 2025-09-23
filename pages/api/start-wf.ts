@@ -1,4 +1,3 @@
-// pages/api/start-wf.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
@@ -14,9 +13,7 @@ interface ExecutionRecord {
   executionId: string;
   status: string;
   startTime: Date;
-  // endTime?: Date;
   updatedAt: Date;
-  // duration?: number;
   error?: string;
 }
 
@@ -30,16 +27,15 @@ export default async function handler(
 
   const { _id } = req.body;
 
-if (!_id) {
-  return (res as any).status(400).json({ error: '_id is required' });
-}
+  if (!_id) {
+    return (res as any).status(400).json({ error: '_id is required' });
+  }
 
-if (!ObjectId.isValid(_id)) {
-  return (res as any).status(400).json({ error: 'Invalid _id format' });
-} 
+  if (!ObjectId.isValid(_id)) {
+    return (res as any).status(400).json({ error: 'Invalid _id format' });
+  }
 
   try {
-    // ดึง extractPath จากฐานข้อมูล
     const client = await clientPromise;
     const db = client.db('login-form-app');
     const collection = db.collection('listfile');
@@ -48,18 +44,17 @@ if (!ObjectId.isValid(_id)) {
     if (!doc) {
       return (res as any).status(404).json({ error: 'File not found' });
     }
-    const extractPath = doc.extractPath; // "./uploads/extracted/1753772754637"
+    const extractPath = doc.extractPath;
 
-// แปลง path ให้เป็น path ใน container
-const containerExtractPath = extractPath.replace(/^\.\/uploads\/extracted/, '/extracted');
+    const containerExtractPath = extractPath.replace(/^\.\/uploads\/extracted/, '/extracted');
 
-const response = await fetch('http://localhost:5678/webhook/start-wf', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({ _id, extractPath: containerExtractPath }),
-});
+    const response = await fetch('http://localhost:5678/webhook/start-wf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ _id, extractPath: containerExtractPath }),
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -75,7 +70,6 @@ const response = await fetch('http://localhost:5678/webhook/start-wf', {
 
     const startTime = new Date();
 
-    // บันทึก executionId, status, startTime ลง MongoDB (แบบเดิม)
     await saveToDatabase(_id, executionId, 'started', startTime);
 
     (res as any).status(200).json({
@@ -91,7 +85,6 @@ const response = await fetch('http://localhost:5678/webhook/start-wf', {
   }
 }
 
-// ฟังก์ชันบันทึกข้อมูลลง MongoDB (ไม่อัพเดท updatedAt ที่ระดับบน)
 async function saveToDatabase(
   _id: string,
   executionId: string,
@@ -105,14 +98,26 @@ async function saveToDatabase(
 
     const updateDoc: any = {};
 
+    // if (status === 'started') {
+    //   updateDoc.executionId = executionId;
+    //   updateDoc.startTime = startTime ?? new Date();
+    // }
+
     if (status === 'started') {
-      updateDoc.executionId = executionId;
-      updateDoc.startTime = startTime ?? new Date();
-    }
+  updateDoc.executionId = executionId;
+  updateDoc.startTime = startTime ?? new Date();
+  updateDoc.status = "processing";
+  updateDoc.clips = []; // ✅ ให้มี array ว่างไว้เลย
+  updateDoc.executionIdHistory = {
+    executionId,
+    startTime: startTime ?? new Date(),
+    workflowStatus: "running"
+  };
+}
 
     await collection.updateOne(
       { _id: new ObjectId(_id) },
-      { 
+      {
         $set: updateDoc,
         $unset: {
           executionHistory: ""
@@ -127,13 +132,15 @@ async function saveToDatabase(
   }
 }
 
-// ฟังก์ชันสำหรับอัพเดท history เมื่อเสร็จสิ้น (เรียกใช้จาก status-wf.ts)
+// ✅ แก้ไข: เพิ่มพารามิเตอร์ clips และ folders
 export async function updateExecutionHistory(
   _id: string,
   executionId: string,
   startTime: Date,
   workflowStatus: string,
-  error?: string
+  error?: string,
+  clips?: any, // เพิ่มพารามิเตอร์
+  folders?: any // เพิ่มพารามิเตอร์
 ) {
   try {
     const client = await clientPromise;
@@ -142,34 +149,38 @@ export async function updateExecutionHistory(
 
     const now = new Date();
 
-    // เตรียมข้อมูล object ที่จะเก็บใน executionIdHistory
     const newHistory = {
       executionId,
       startTime,
-      endTime: now, // เวลาที่ workflow เสร็จสิ้น
+      endTime: now,
       workflowStatus,
-      // updatedAt: now,  <-- เอาออกตามที่ขอ
       ...(error && { error }),
+    };
+
+    // ✅ เพิ่มการอัปเดต clips และ folders ในการอัปเดต MongoDB
+    const updateSet: any = {
+      executionIdHistory: newHistory,
+      updatedAt: now,
+      status: workflowStatus,
+      ...(clips && { clips }),
+      ...(folders && { folders }),
     };
 
     await collection.updateOne(
       { _id: new ObjectId(_id) },
       {
-        $set: {
-          executionIdHistory: newHistory,
-        },
+        $set: updateSet,
         $unset: {
           executionId: "",
           startTime: "",
           workflowStatus: "",
           error: "",
-          updatedAt: "",
           executionHistory: ""
         }
       }
     );
 
-    console.log('✅ executionIdHistory updated and all unwanted fields removed successfully');
+    console.log('✅ executionIdHistory updated successfully');
   } catch (err) {
     console.error('❌ Error updating executionIdHistory:', err);
   }

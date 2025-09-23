@@ -38,8 +38,8 @@ interface HistoryVideo {
   executionIdHistory?: ExecutionHistory;
 }
 
-// const BASE_VIDEO_URL = "http://192.168.70.166:8080";
-const BASE_VIDEO_URL = "http://192.168.1.109:8080";
+const BASE_VIDEO_URL = "http://192.168.70.166:8080";
+// const BASE_VIDEO_URL = "http://192.168.1.109:8080";
 
 // Helper function to parse dates
 function parseDate(value: string | { $date: string }): Date {
