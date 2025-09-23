@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const client = await clientPromise;
-    const db = client.db('login-form-app');
+    const db = client.db('working2');
     const collection = db.collection('listfile');
 
     let execId: string;
@@ -62,12 +62,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (finished) {
       status = rawStatus === 'success' || rawStatus === 'succeeded' ? 'succeeded' : 'error';
     } else {
-      status = ['running','pending','inprogress'].includes(rawStatus) ? 'running' : 'running';
+      status = ['running','pending','inprogress'].includes(rawStatus) ? 'running' :
+               ['idle','waiting'].includes(rawStatus) ? 'idle' : 'running';
     }
 
     // 🔹 ดึง clips จาก MongoDB เสมอ
-    let clips: { video?: string; finalVideo?: string; createdAt?: Date }[] = doc?.clips ?? [];
-    console.log(`[status-wf] fileId: ${documentId}, execId: ${execId}, status: ${status}, finished: ${finished}`);
+let clips: { video?: string; finalVideo?: string; createdAt?: Date }[] = doc?.clips ?? [];
+console.log(`[status-wf] fileId: ${documentId}, execId: ${execId}, status: ${status}, finished: ${finished}`);
 
 
     // 🔹 update history ถ้า workflow finished
