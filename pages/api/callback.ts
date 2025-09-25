@@ -1,28 +1,47 @@
 // pages/api/callback.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
+import { ObjectId } from 'mongodb'; // ✅ แก้ไข: เพิ่มการ import ObjectId
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return (res as any).status(405).json({ status: 'Method not allowed' });
   }
 
-  interface Clip {
-    video?: string; // relative path
-    finalVideo?: string;  // เพิ่มตรงนี้
-    createdAt: Date;
-    // isFinal?: boolean;    // ถ้าเป็น final video จะ true
+  // ✅ แก้ไข: เพิ่ม interface สำหรับ user document
+  interface UserDoc {
+    _id: ObjectId;
+    userId: string;
+    tokens: number;
+    tokenHistory: TokenEntry[];
   }
 
+  // ✅ แก้ไข: เพิ่ม interface สำหรับ token history
+  interface TokenEntry {
+    date: Date;
+    change: number;
+    reason: string;
+    type: string;
+  }
+
+  // ✅ แก้ไข: อัปเดต interface ให้ตรงกับโครงสร้างข้อมูลใน DB
+  interface Clip {
+    video?: string;
+    finalVideo?: string;
+    createdAt: Date;
+    tokenDeducted?: boolean; // ⚠️ เพิ่ม field นี้
+  }
+  
+  // ✅ แก้ไข: เพิ่ม userId และกำหนด clips เป็น array ใน interface
   interface FileDoc {
+    _id: ObjectId;
     executionId: string;
+    userId: string;
     clips: Clip[];
     status?: string;
   }
 
   const { executionId, video, resultVideo } = req.body;
-
-  console.log(`[callback] executionId: ${executionId}, video: ${video}, resultVideo: ${resultVideo}`);
   
   if (!executionId || (!video && !resultVideo)) {
     return (res as any).status(400).json({ status: 'error', message: 'Missing required fields' });
@@ -31,35 +50,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const client = await clientPromise;
     const db = client.db('login-form-app');
-    const collection = db.collection<FileDoc>('listfile');
+    const listFileCollection = db.collection<FileDoc>('listfile');
+    // const usersCollection = db.collection<UserDoc>('users'); // ✅ แก้ไข: กำหนด type ให้ถูกต้อง
+    const userTokensCollection = db.collection<UserDoc>('user_tokens');
 
     if (video) {
-    // update หรือ insert document
-    await collection.updateOne(
-      { executionId },
-      {
-        $push: { clips: { video, createdAt: new Date() } },
-        $set: { status: 'running' }
-      },
-      { upsert: true }
-    );
-  }
+        // อัปเดต listfile: เพิ่มคลิปใหม่เข้าไปใน array 'clips'
+        await listFileCollection.updateOne(
+          { executionId },
+          {
+            $push: { clips: { video, createdAt: new Date(), tokenDeducted: true  } },
+            $set: { status: 'running' }
+          },
+          { upsert: true }
+        );
 
-if (resultVideo) {
-  await collection.updateOne(
-    { executionId },
-    {
-      $push: { clips: { finalVideo: resultVideo, createdAt: new Date() } },
-      $set: { status: 'completed' }
-    },
-    { upsert: true }
-  );
-}
+        // ✅ ส่วนที่ต้องเพิ่ม: การหัก Token และบันทึกประวัติ
+        const fileDoc = await listFileCollection.findOne({ executionId });
+        if (fileDoc) {
+            await userTokensCollection.updateOne(
+                { userId: fileDoc.userId },
+                {
+                    $inc: { tokens: -1 }, // หัก Token ลง 1
+                    $push: {
+                        tokenHistory: {
+                            date: new Date(),
+                            change: -1,
+                            reason: 'สร้างคลิปวิดีโอสำเร็จ',
+                            type: 'video_creation'
+                        }
+                    }
+                }
+            );
+            console.log(`✅ Deducted 1 token from user ${fileDoc.userId} for video clip.`);
+        }
+    }
 
-    return (res as any).status(200).json({ status: 'ok' });
-  } catch (err) {
-    console.error('❌ MongoDB Error:', err);
+    if (resultVideo) {
+      await listFileCollection.updateOne(
+        { executionId },
+        {
+          $push: { clips: { finalVideo: resultVideo, createdAt: new Date() } },
+          $set: { status: 'completed' }
+        },
+        { upsert: true }
+      );
+    }
     
-    return (res as any).status(500).json({ status: 'error', message: 'Failed to update DB' });
+    return (res as any).status(200).json({ status: 'success' });
+
+  } catch (error) {
+    console.error('❌ Error in callback:', error);
+    return (res as any).status(500).json({ status: 'error', message: 'Internal Server Error' });
   }
 }

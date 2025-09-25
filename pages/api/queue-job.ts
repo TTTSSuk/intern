@@ -24,43 +24,53 @@ export default async function handler(
   try {
     const client = await clientPromise;
     const db = client.db('login-form-app');
-    const collection = db.collection('listfile');
+    const listFileCollection = db.collection('listfile');
+    // const usersCollection = db.collection('users'); // เพิ่มการเชื่อมต่อ Users Collection
+    const userTokensCollection = db.collection('user_tokens');
 
-    // ตรวจสอบว่าไฟล์มีอยู่จริงหรือไม่
-    const existingFile = await collection.findOne({ _id: new ObjectId(fileId) });
+    // 1. ตรวจสอบว่าไฟล์มีอยู่จริง
+    const existingFile = await listFileCollection.findOne({ _id: new ObjectId(fileId) });
     if (!existingFile) {
       return (res as any).status(404).json({ error: 'File not found' });
     }
 
-    console.log(`📋 Queue request for ${fileId}, current status: ${existingFile.status}`);
+    // 2. นับจำนวนคลิปที่ต้องสร้างจากโครงสร้างโฟลเดอร์
+    let requiredTokens = 0;
+    if (existingFile.folders?.subfolders?.[0]?.subfolders) {
+      requiredTokens = existingFile.folders.subfolders[0].subfolders.length;
+    }
+    
+    // หากไม่พบโฟลเดอร์ย่อยที่จำเป็น ก็สามารถส่ง error ได้
+    if (requiredTokens === 0) {
+      return (res as any).status(400).json({ error: 'No clips found to process in the file structure.' });
+    }
 
-    // ตรวจสอบว่างานกำลังทำงานอยู่หรือไม่ (เฉพาะสถานะที่ยังไม่เสร็จ)
-    if (['queued', 'running', 'processing'].includes(existingFile.status)) {
-      console.log(`⏳ Job ${fileId} is already active with status: ${existingFile.status}`);
-      return (res as any).status(200).json({ 
-        jobId: fileId, 
-        message: `Job already in ${existingFile.status} status`,
-        status: existingFile.status,
-        queuePosition: existingFile.queuePosition
+    // 3. ตรวจสอบ Token ของผู้ใช้
+    const user = await userTokensCollection.findOne({ userId: existingFile.userId });
+    if (!user) {
+        return (res as any).status(404).json({ error: 'User not found' });
+    }
+
+    if (user.tokens < requiredTokens) {
+      // ส่ง status 402 เพื่อระบุว่าต้องจ่ายเงิน (Payment Required)
+      return (res as any).status(402).json({ 
+        error: 'Insufficient tokens', 
+        message: `คุณมี Token ไม่พอสำหรับการสร้างวิดีโอ ต้องใช้ ${requiredTokens} Token แต่คุณมีแค่ ${user.tokens} Token` 
       });
     }
 
-    // ถ้างานเสร็จแล้ว (completed, succeeded, error) ให้เริ่มงานใหม่ได้
-    if (['completed', 'succeeded', 'error'].includes(existingFile.status)) {
-      console.log(`🔄 Restarting job ${fileId} from ${existingFile.status} status`);
-    }
-
+    // 4. ถ้า Token พอ ก็ดำเนินการตามโค้ดเดิม
     // หา queue position ล่าสุด
-    const lastQueueItem = await collection.findOne(
+    const lastQueueItem = await listFileCollection.findOne(
       { status: 'queued' },
       { sort: { queuePosition: -1 } }
     );
     
     const nextPosition = (lastQueueItem?.queuePosition || 0) + 1;
 
-    // อัปเดตสถานะเป็น queued พร้อม queue position และล้างข้อมูลเก่า
+    // อัปเดตสถานะเป็น queued พร้อม queue position
     const now = new Date();
-    const updateResult = await collection.updateOne(
+    await listFileCollection.updateOne(
       { _id: new ObjectId(fileId) },
       { 
         $set: { 
@@ -69,110 +79,24 @@ export default async function handler(
           updatedAt: now
         },
         $unset: {
-          executionId: "",
-          startTime: "",
-          error: "",
-          clips: "",
-          executionIdHistory: ""
+          executionId: '',
+          startTime: '',
+          error: ''
         }
       }
     );
 
-    if (updateResult.modifiedCount === 0) {
-      console.warn(`⚠️ Job ${fileId} was not modified - update may have failed`);
-    }
-
     console.log(`✅ Job ${fileId} added to queue at position ${nextPosition}`);
-
     (res as any).status(200).json({ 
-      jobId: fileId,
-      queuePosition: nextPosition,
-      status: 'queued',
-      message: 'Job added to queue successfully'
+      jobId: fileId, 
+      status: 'queued', 
+      message: 'งานถูกส่งเข้าคิวเรียบร้อย',
+      requiredTokens,
+      nextPosition
     });
+
   } catch (error) {
-    console.error('❌ Failed to queue job:', error);
-    return (res as any).status(500).json({ error: 'Failed to queue job' });
+    console.error('❌ Error in queue-job:', error);
+    return (res as any).status(500).json({ error: 'Internal Server Error' });
   }
 }
-// import type { NextApiRequest, NextApiResponse } from 'next';
-// import clientPromise from '@/lib/mongodb';
-// import { ObjectId } from 'mongodb';
-
-// export default async function handler(
-//   req: NextApiRequest,
-//   res: NextApiResponse
-// ) {
-//   if (req.method !== 'POST') {
-//     return (res as any).status(405).json({ error: 'Method not allowed' });
-//   }
-
-//   const { fileId } = req.body; // เปลี่ยนจาก _id เป็น fileId ให้ตรงกับที่ส่งมาจาก frontend
-
-//   if (!fileId) {
-//     return (res as any).status(400).json({ error: 'fileId is required' });
-//   }
-
-//   if (!ObjectId.isValid(fileId)) {
-//     return (res as any).status(400).json({ error: 'Invalid fileId format' });
-//   }
-
-//   try {
-//     const client = await clientPromise;
-//     const db = client.db('login-form-app');
-//     const collection = db.collection('listfile');
-
-//     // ตรวจสอบว่าไฟล์มีอยู่จริงหรือไม่
-//     const existingFile = await collection.findOne({ _id: new ObjectId(fileId) });
-//     if (!existingFile) {
-//       return (res as any).status(404).json({ error: 'File not found' });
-//     }
-
-//     // ตรวจสอบว่างานอยู่ใน queue แล้วหรือยัง
-//     if (['queued', 'running', 'processing', 'completed', 'succeeded'].includes(existingFile.status)) {
-//       return (res as any).status(200).json({ 
-//         jobId: fileId, 
-//         message: `Job already in ${existingFile.status} status`,
-//         status: existingFile.status
-//       });
-//     }
-
-//     // หา queue position ล่าสุด
-//     const lastQueueItem = await collection.findOne(
-//       { status: 'queued' },
-//       { sort: { queuePosition: -1 } }
-//     );
-    
-//     const nextPosition = (lastQueueItem?.queuePosition || 0) + 1;
-
-//     // อัปเดตสถานะเป็น queued พร้อม queue position
-//     const now = new Date();
-//     await collection.updateOne(
-//       { _id: new ObjectId(fileId) },
-//       { 
-//         $set: { 
-//           status: 'queued',
-//           queuePosition: nextPosition,
-//           updatedAt: now
-//         },
-//         $unset: {
-//           executionId: "",
-//           startTime: "",
-//           error: ""
-//         }
-//       }
-//     );
-
-//     console.log(`✅ Job ${fileId} added to queue at position ${nextPosition}`);
-
-//     (res as any).status(200).json({ 
-//       jobId: fileId,
-//       queuePosition: nextPosition,
-//       status: 'queued',
-//       message: 'Job added to queue successfully'
-//     });
-//   } catch (error) {
-//     console.error('Failed to queue job:', error);
-//     return (res as any).status(500).json({ error: 'Failed to queue job' });
-//   }
-// }

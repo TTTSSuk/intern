@@ -6,7 +6,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const client = await clientPromise;
   const db = client.db("login-form-app");
   const usersCollection = db.collection("users");
-  const videosCollection = db.collection("listfile"); 
+  const videosCollection = db.collection("listfile");
+  const userTokensCollection = db.collection("user_tokens");
+ 
 
   if (req.method === "GET") {
     const { userId } = req.query;
@@ -24,6 +26,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!user) {
         return (res as any).status(404).json({ success: false, message: "ไม่พบผู้ใช้" });
       }
+
+       // ดึง token และ history จาก collection user_tokens
+    const tokenData = await userTokensCollection.findOne({ userId });
+    const tokens = tokenData?.tokens ?? 0;
+    const tokenHistory = tokenData?.tokenHistory ?? [];
 
        // ดึงไฟล์ที่ผู้ใช้อัปโหลดมา
       const uploadedFiles = await videosCollection
@@ -43,6 +50,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         success: true,
         user: {
           ...user,
+          tokens,
+          tokenHistory,
           uploadedFiles: filesFormatted,
         },
       });

@@ -1,3 +1,4 @@
+// pages\api\user.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import clientPromise from "@/lib/mongodb";
 

@@ -37,12 +37,12 @@ export default function CreateVideo() {
   const refreshInterval = 10000;
 
   function formatDateTime(date: Date): string {
-    const datePart = date.toLocaleDateString('th-TH', { 
+    const datePart = date.toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'short', 
       day: 'numeric'
     });
-    const timePart = date.toLocaleTimeString('th-TH', {
+    const timePart = date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
@@ -140,12 +140,31 @@ export default function CreateVideo() {
       updatedAt: new Date().toISOString() 
     });
 
+     // ⚠️ เพิ่มโค้ดส่วนนี้เพื่อดึง userId ที่เหมาะสม
+    // คุณต้องแน่ใจว่าได้ดึง userId มาจากที่เหมาะสม เช่น localStorage, context หรือ auth hook
+    const userId = "some_user_id"; // ❗ เปลี่ยน 'some_user_id' เป็นวิธีการดึง userId ที่ถูกต้อง
+    if (!userId) {
+      setError("User ID not found.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/queue-job', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ fileId: id }) 
+        body: JSON.stringify({ fileId: id, userId: userId }) 
       });
+
+      // ✅ จุดที่ต้องแก้ไข: เพิ่มการตรวจสอบสถานะ 402 ที่นี่
+      if (res.status === 402) {
+        const result = await res.json();
+        setError(result.message || 'จำนวน Token ไม่พอ');
+        setLoading(false);
+        // ไม่ต้องทำอะไรต่อ ให้ error alert ทำงาน
+        return; 
+      }
+
       const result = await res.json();
 
       if (res.ok) {
@@ -249,7 +268,7 @@ export default function CreateVideo() {
       />
 
       {!status && !error && <p>กำลังโหลดสถานะ...</p>}
-      {error && <p className="text-red-600">เกิดข้อผิดพลาด: {error}</p>}
+      {/* {error && <p className="text-red-600">เกิดข้อผิดพลาด: {error}</p>} */}
 
       <div className="min-h-screen">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -316,7 +335,7 @@ export default function CreateVideo() {
                 
                 <div className="bg-white/70 rounded-lg p-4">
                   <p className="text-sm text-gray-500 mb-1">อัพเดทล่าสุด</p>
-                  <p className="text-sm">{status?.updatedAt ? formatDateTime(new Date(status.updatedAt)): '-'}</p>
+                  <p className="text-sm">{status?.updatedAt ? formatDateTime(new Date(status.updatedAt)): ''}</p>
                 </div>
               </div>
             </div>
@@ -340,19 +359,29 @@ export default function CreateVideo() {
           )}
 
           {/* Error Alert */}
-          {error && (
-            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 mb-6">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-xl">⚠️</span>
-                </div>
-                <div>
-                  <h3 className="font-bold text-red-800 mb-1">เกิดข้อผิดพลาด</h3>
-                  <p className="text-red-700">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
+{error && (
+  <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="bg-white border-2 border-red-200 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl animate-fade-in">
+      <div className="flex items-center space-x-4">
+        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-white text-2xl">⚠️</span>
+        </div>
+        <div>
+          <h3 className="font-semibold text-red-800 text-lg mb-2">เกิดข้อผิดพลาด</h3>
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      </div>
+      <div className="mt-6 flex justify-end">
+        <button
+          onClick={() => setError(null)}
+          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium"
+        >
+          ปิด
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
           {/* Generated Clips */}
           {clips.length > 0 && (
