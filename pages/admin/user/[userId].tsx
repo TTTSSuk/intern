@@ -2,6 +2,12 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/Layouts/AdminLayout";
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface TokenHistoryItem {
   date: string;
@@ -301,33 +307,45 @@ const handleSave = async (data?: {
       </button>
     </div>
 
-       {/* ฝั่งขวา: ประวัติ Token */}
-      <div className="max-h-72 overflow-y-auto">
+       
+{/* ฝั่งขวา: ประวัติ Token */}
+<div className="max-h-72 overflow-y-auto">
   <h3 className="font-semibold mb-4 text-gray-800 text-lg border-b border-gray-300 pb-2">ประวัติ Token</h3>
   {user.tokenHistory && user.tokenHistory.length > 0 ? (
     <ul className="space-y-3 text-gray-700 text-sm">
       {user.tokenHistory
-        .filter(t => t.change !== 0)  // กรองเอาเฉพาะที่ change ไม่เท่ากับ 0
-        .map((t, i) => (
-          <li
-            key={i}
-            className={`p-3 rounded-md ${
-              t.change > 0 ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
-            } shadow-sm`}
-          >
-            <div className="flex justify-between">
-              <span className="font-medium">{t.date}</span>
-              <span>{t.change > 0 ? "+" : ""}{t.change}</span>
-            </div>
-            <p className="mt-1 text-xs italic">{t.reason}</p>
-          </li>
-        ))
-      }
+        .filter(t => t.change !== 0) // กรองเอาเฉพาะที่ change ไม่เท่ากับ 0
+        .map((t, i) => {
+          // แปลงวันที่เป็นเวลาไทยและ พ.ศ.
+          const dateObj = dayjs(t.date).tz('Asia/Bangkok');
+          const day = String(dateObj.date()).padStart(2, '0');
+          const month = String(dateObj.month() + 1).padStart(2, '0'); // เดือน 0-11
+          const year = dateObj.year() + 543; // แปลงเป็น พ.ศ.
+          const hours = String(dateObj.hour()).padStart(2, '0');
+          const minutes = String(dateObj.minute()).padStart(2, '0');
+
+          const formattedDate = `${day}/${month}/${year} ${hours}:${minutes}`;
+
+          return (
+            <li
+              key={i}
+              className={`p-3 rounded-md ${
+                t.change > 0 ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+              } shadow-sm`}
+            >
+              <div className="flex justify-between">
+                <span className="font-medium">{formattedDate}</span>
+                <span>{t.change > 0 ? '+' : ''}{t.change}</span>
+              </div>
+              <p className="mt-1 text-xs italic">{t.reason}</p>
+            </li>
+          );
+        })}
     </ul>
   ) : (
     <p className="text-gray-400 italic">ไม่มีประวัติ token</p>
   )}
-      </div>
+</div>
       </section>
         )}
 

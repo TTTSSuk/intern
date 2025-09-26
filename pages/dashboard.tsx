@@ -1,5 +1,4 @@
 //pages\dashboard.tsx
-// pages/dashboard.tsx
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { User, FileText, Coins, Play } from 'lucide-react'
@@ -16,7 +15,7 @@ interface UserProfile {
 
 interface UserFile {
   _id: string
-  status: string // 'done' = วิดีโอสำเร็จ
+  status: 'pending' | 'processing' | 'completed' | 'error'
 }
 
 export default function Dashboard() {
@@ -46,7 +45,7 @@ export default function Dashboard() {
         })
 
       // Fetch user files
-      fetch(`/api/files/user-files?userId=${userId}`)
+      fetch(`/api/list-files?userId=${userId}`)
         .then(res => res.json())
         .then(data => setUserFiles(data.files || []))
         .catch(() => setUserFiles([]))
@@ -64,12 +63,13 @@ export default function Dashboard() {
     })
 
   const goToUpload = () => router.push('/upload-zip')
-  const goToFiles = () => router.push('/files')
-  const goToTokens = () => router.push('/tokens')
+  const goToFiles = () => router.push('/list-files')
+  const goToComplete = () => router.push('/my-videos')
+  const goToTokens = () => router.push('/TokenHistory')
 
   const countFiles = (files: UserFile[]) => files.length
   const countVideos = (files: UserFile[]) =>
-    files.filter(f => f.status === 'done').length
+    files.filter(f => f.status === 'completed').length
 
   if (loading) {
     return (
@@ -154,7 +154,7 @@ export default function Dashboard() {
 
         {/* Videos Completed */}
         <div
-          onClick={goToFiles}
+          onClick={goToComplete}
           className="cursor-pointer bg-gradient-to-r from-orange-400 to-orange-500 rounded-lg p-6 text-white hover:shadow-lg transition"
         >
           <div className="flex items-center justify-between">

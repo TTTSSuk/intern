@@ -59,6 +59,19 @@ export default async function handler(
       });
     }
 
+    // ตรวจสอบว่า job นี้ไม่ได้อยู่ในระบบแล้ว
+const existingJob = await listFileCollection.findOne({ 
+  _id: new ObjectId(fileId),
+  status: { $in: ['queued', 'running', 'starting'] }
+});
+
+if (existingJob) {
+  return (res as any).status(409).json({ 
+    error: 'Job already in progress',
+    message: 'งานนี้อยู่ในระบบแล้ว'
+  });
+}
+
     // 4. ถ้า Token พอ ก็ดำเนินการตามโค้ดเดิม
     // หา queue position ล่าสุด
     const lastQueueItem = await listFileCollection.findOne(

@@ -1,11 +1,20 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import clientPromise from "@/lib/mongodb";
 
+function getThailandDate(): Date {
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000; // แปลงเป็น UTC
+  const thailandTime = new Date(utc + 7 * 60 * 60 * 1000); // บวก 7 ชั่วโมง
+  return thailandTime; // เป็น Date object
+}
+
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const client = await clientPromise;
   const db = client.db("login-form-app");
   const usersCollection = db.collection("users");
   const userTokensCollection = db.collection("user_tokens");
+
 
   if (req.method === "GET") {
     try {
@@ -120,7 +129,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         tokenUpdateFields.tokens = newTokens;
 
         const tokenHistoryItem = {
-          date: new Date().toISOString().split("T")[0],
+          date: getThailandDate(),
           change: tokenChange,
           reason: reason || (tokenChange > 0 ? "เพิ่ม token โดยแอดมิน" : "ปรับ token"),
         };

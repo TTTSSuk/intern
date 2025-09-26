@@ -142,7 +142,7 @@ export default function CreateVideo() {
 
      // ⚠️ เพิ่มโค้ดส่วนนี้เพื่อดึง userId ที่เหมาะสม
     // คุณต้องแน่ใจว่าได้ดึง userId มาจากที่เหมาะสม เช่น localStorage, context หรือ auth hook
-    const userId = "some_user_id"; // ❗ เปลี่ยน 'some_user_id' เป็นวิธีการดึง userId ที่ถูกต้อง
+    const userId = localStorage.getItem('loggedInUser'); 
     if (!userId) {
       setError("User ID not found.");
       setLoading(false);
