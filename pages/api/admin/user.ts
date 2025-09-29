@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const usersCollection = db.collection("users");
   const videosCollection = db.collection("listfile");
   const userTokensCollection = db.collection("user_tokens");
- 
+  const tokenHistoryCollection = db.collection("token_history"); // ✅ เพิ่ม
 
   if (req.method === "GET") {
     const { userId } = req.query;
@@ -30,7 +30,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
        // ดึง token และ history จาก collection user_tokens
     const tokenData = await userTokensCollection.findOne({ userId });
     const tokens = tokenData?.tokens ?? 0;
-    const tokenHistory = tokenData?.tokenHistory ?? [];
+    // const tokenHistory = tokenData?.tokenHistory ?? [];
+
+      // ✅ ดึงประวัติ token จาก token_history collection
+      const tokenHistory = await tokenHistoryCollection
+        .find({ userId })
+        .sort({ date: -1 })
+        .limit(100)
+        .toArray();
 
        // ดึงไฟล์ที่ผู้ใช้อัปโหลดมา
       const uploadedFiles = await videosCollection
@@ -51,7 +58,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         user: {
           ...user,
           tokens,
-          tokenHistory,
+          tokenHistory: tokenHistory.map(h => ({
+            date: h.date,
+            change: h.change,
+            reason: h.reason,
+            type: h.type,
+            executionId: h.executionId,
+            video: h.video,
+          })),
           uploadedFiles: filesFormatted,
         },
       });

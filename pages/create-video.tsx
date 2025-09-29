@@ -325,7 +325,7 @@ export default function CreateVideo() {
                     <p className="font-bold text-lg">#{status.queuePosition}</p>
                   </div>
                 )}
-                
+
                 {status.executionId && (
                   <div className="bg-white/70 rounded-lg p-4">
                     <p className="text-sm text-gray-500 mb-1">Execution ID</p>

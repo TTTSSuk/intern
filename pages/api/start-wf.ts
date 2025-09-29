@@ -157,13 +157,14 @@ export async function updateExecutionHistory(
       ...(error && { error }),
     };
 
-    // ✅ เพิ่มการอัปเดต clips และ folders ในการอัปเดต MongoDB
+     // ✅ เพิ่มการอัปเดต clips และ folders ในการอัปเดต MongoDB
     const updateSet: any = {
       executionIdHistory: newHistory,
       updatedAt: now,
       status: workflowStatus,
       ...(clips && { clips }),
       ...(folders && { folders }),
+      ...(error && { error: error  }), // ✅ เพิ่ม: กำหนด error ที่ root document ถ้ามี error
     };
 
     await collection.updateOne(
@@ -171,15 +172,15 @@ export async function updateExecutionHistory(
       {
         $set: updateSet,
         $unset: {
-          executionId: "",
-          startTime: "",
-          workflowStatus: "",
-          error: "",
-          executionHistory: ""
+          executionId: "", // ✅ ล้าง executionId ชั่วคราว
+          startTime: "",   // ✅ ล้าง startTime ชั่วคราว
+          // workflowStatus: "", // ❌ ลบฟิลด์นี้ออก เพราะไม่มีอยู่จริง/ไม่จำเป็น
+          // error: "",       // ✅ คงไว้: เพื่อล้าง error ที่เคยค้างอยู่จากการรันก่อนหน้า (ถ้าการรันนี้สำเร็จ)
+          executionHistory: "" // ✅ ล้างฟิลด์เก่า
         }
       }
     );
-
+    
     console.log('✅ executionIdHistory updated successfully');
   } catch (err) {
     console.error('❌ Error updating executionIdHistory:', err);

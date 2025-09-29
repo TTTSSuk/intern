@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const db = client.db("login-form-app");
   const usersCollection = db.collection("users");
   const userTokensCollection = db.collection("user_tokens");
-
+  const tokenHistoryCollection = db.collection("token_history"); // ✅ เพิ่ม
 
   if (req.method === "GET") {
     try {
@@ -45,7 +45,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           {
             $set: {
               tokens: { $ifNull: ["$tokenData.tokens", 0] },
-              tokenHistory: { $ifNull: ["$tokenData.tokenHistory", []] },
+              // tokens: { $ifNull: ["$tokenData.tokens", 0] },
+              // tokenHistory: { $ifNull: ["$tokenData.tokenHistory", []] },
             },
           },
           {
@@ -89,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await userTokensCollection.insertOne({
         userId,
         tokens: 0,
-        tokenHistory: [],
+        // tokenHistory: [],
         createdAt: new Date(),
       });
 
@@ -107,7 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const userUpdateFields: any = {};
-    const tokenUpdateFields: any = {};
+    // const tokenUpdateFields: any = {};
 
     // จัดการการอัปเดตที่เกี่ยวข้องกับผู้ใช้
     if (typeof isActive === "boolean") userUpdateFields.isActive = isActive;
@@ -115,6 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (typeof suspensionReason === "string") userUpdateFields.suspensionReason = suspensionReason;
 
     // จัดการการอัปเดตที่เกี่ยวข้องกับโทเค็น
+    let tokenModified = false;
     if (typeof tokens === "number") {
       const tokenData = await userTokensCollection.findOne({ userId });
       if (!tokenData) {
@@ -125,38 +127,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const newTokens = tokens;
       const tokenChange = newTokens - oldTokens;
 
-      if (tokenChange !== 0) {
-        tokenUpdateFields.tokens = newTokens;
+    //   if (tokenChange !== 0) {
+    //     tokenUpdateFields.tokens = newTokens;
 
-        const tokenHistoryItem = {
+    //     const tokenHistoryItem = {
+    //       date: getThailandDate(),
+    //       change: tokenChange,
+    //       reason: reason || (tokenChange > 0 ? "เพิ่ม token โดยแอดมิน" : "ปรับ token"),
+    //     };
+
+    //     tokenUpdateFields.tokenHistory = tokenData.tokenHistory
+    //       ? [...tokenData.tokenHistory, tokenHistoryItem]
+    //       : [tokenHistoryItem];
+    //   }
+    // }
+
+    if (tokenChange !== 0) {
+        // ✅ อัปเดตยอด tokens ใน user_tokens
+        await userTokensCollection.updateOne(
+          { userId },
+          { $set: { tokens: newTokens } }
+        );
+
+        // ✅ สร้าง document ใหม่ใน token_history
+        await tokenHistoryCollection.insertOne({
+          userId,
           date: getThailandDate(),
           change: tokenChange,
           reason: reason || (tokenChange > 0 ? "เพิ่ม token โดยแอดมิน" : "ปรับ token"),
-        };
+          type: "admin_adjustment",
+        });
 
-        tokenUpdateFields.tokenHistory = tokenData.tokenHistory
-          ? [...tokenData.tokenHistory, tokenHistoryItem]
-          : [tokenHistoryItem];
+        tokenModified = true;
       }
     }
 
-    if (Object.keys(userUpdateFields).length === 0 && Object.keys(tokenUpdateFields).length === 0) {
+    if (Object.keys(userUpdateFields).length === 0 && !tokenModified)
+   {
       return (res as any).status(400).json({ success: false, message: "ไม่มีข้อมูลที่จะอัปเดต" });
     }
 
     try {
-      let modified = false;
+      let modified = tokenModified;
 
-      // อัปเดตคอลเลกชัน users ถ้ามีการอัปเดตที่เกี่ยวข้องกับผู้ใช้
+     // อัปเดตคอลเลกชัน users ถ้ามีการอัปเดต
       if (Object.keys(userUpdateFields).length > 0) {
         const userResult = await usersCollection.updateOne({ userId }, { $set: userUpdateFields });
         if (userResult.modifiedCount === 1) modified = true;
-      }
-
-      // อัปเดตคอลเลกชัน user_tokens ถ้ามีการอัปเดตที่เกี่ยวข้องกับโทเค็น
-      if (Object.keys(tokenUpdateFields).length > 0) {
-        const tokenResult = await userTokensCollection.updateOne({ userId }, { $set: tokenUpdateFields });
-        if (tokenResult.modifiedCount === 1) modified = true;
       }
 
       if (modified) {

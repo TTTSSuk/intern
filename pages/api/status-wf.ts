@@ -1,4 +1,4 @@
-//pages/api/status-wf.ts - Debug Version
+//pages/api/status-wf.ts - Fixed Version
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
@@ -59,9 +59,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // ถ้างานเสร็จแล้ว ไม่ต้องเรียก N8N API อีก
-    if (['completed', 'succeeded', 'error'].includes(doc.status)) {
-      console.log(`✅ Job already finished with status: ${doc.status}`);
+    // ✅ แก้ไข: ให้ตรวจสอบจาก N8N เสมอ เพื่ออัปเดต executionIdHistory
+    // เฉพาะงานที่เสร็จสมบูรณ์แล้วและมี executionIdHistory อยู่แล้ว 
+    // ถึงจะคืนค่าทันที
+    if (['completed', 'succeeded', 'error'].includes(doc.status) && doc.executionIdHistory) {
       return (res as any).status(200).json({
         status: doc.status,
         finished: true,
@@ -100,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const data = await n8nRes.json();
-    const status = data.status;
+    const n8nStatus = data.status;  // ✅ เปลี่ยนชื่อตัวแปรเพื่อความชัดเจน
     const finished = data.finished;
     
     // Extract clips from N8N response
@@ -109,27 +110,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     console.log(`📊 N8N Response for ${documentId}:`, {
       executionId: execId,
-      status: status,
+      n8nStatus: n8nStatus,
       finished: finished,
       hasClips: !!clipsFromN8N,
       hasFolders: !!foldersFromN8N,
       clipsCount: Array.isArray(clipsFromN8N) ? clipsFromN8N.length : 0
     });
 
-    // 🔥 แก้ไขเงื่อนไข: อัปเดตเมื่อ finished = true หรือ status เป็น error/succeeded
-    const shouldUpdate = documentId && execId && (finished || ['error', 'succeeded', 'failed'].includes(status));
+    // 🔥 แก้ไขเงื่อนไข: อัปเดตเมื่อ finished = true หรือ status เป็น error/succeeded/failed
+    const shouldUpdate = documentId && execId && (finished || ['error', 'succeeded', 'failed'].includes(n8nStatus));
     
     console.log(`🤔 Should update DB?`, {
       documentId: !!documentId,
       execId: !!execId,
       finished: finished,
-      status: status,
+      n8nStatus: n8nStatus,
       shouldUpdate: shouldUpdate
     });
 
     if (shouldUpdate) {
-      const finalStatus = status === 'succeeded' ? 'completed' : 'error';
-      const errorMessage = status === 'error' || status === 'failed' ? getErrorMessage(data) : undefined;
+      // ✅ แก้ไข: ใช้ logic ที่ถูกต้องในการแปลง status
+      let finalStatus: string;
+      let errorMessage: string | undefined;
+
+      if (n8nStatus === 'succeeded' || n8nStatus === 'success') {
+        finalStatus = 'completed';  // ✅ succeeded -> completed
+        errorMessage = undefined;
+      } else if (['error', 'failed'].includes(n8nStatus)) {
+        finalStatus = 'error';      // ✅ error/failed -> error
+        errorMessage = getErrorMessage(data);
+      } else if (finished && n8nStatus === 'running') {
+        // กรณีที่ N8N บอกว่า finished แต่ status ยัง running
+        finalStatus = 'completed';
+        errorMessage = undefined;
+      } else {
+        // กรณีอื่นๆ ที่ไม่แน่ใจ
+        finalStatus = n8nStatus;
+        errorMessage = n8nStatus === 'error' ? getErrorMessage(data) : undefined;
+      }
+
       const startTime = doc?.startTime || new Date();
 
       console.log(`💾 Updating DB with final status: ${finalStatus}`);
@@ -140,7 +159,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           documentId!, 
           execId, 
           startTime, 
-          finalStatus, 
+          finalStatus,  // ✅ ใช้ finalStatus ที่แปลงแล้ว
           errorMessage, 
           clipsFromN8N, 
           foldersFromN8N
@@ -150,11 +169,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.error(`❌ Failed to update DB:`, updateError);
       }
     } else {
-      console.log(`⏭️ Skipping DB update - conditions not met`);
+      console.log(`⭐️ Skipping DB update - conditions not met`);
+    }
+
+    // ✅ แก้ไข: ส่ง status ที่ถูกต้องกลับไปยัง client
+    let responseStatus = n8nStatus;
+    if (finished && (n8nStatus === 'succeeded' || n8nStatus === 'success')) {
+      responseStatus = 'completed';  // ✅ แปลง succeeded เป็น completed สำหรับ response
+    } else if (finished && ['error', 'failed'].includes(n8nStatus)) {
+      responseStatus = 'error';      // ✅ แปลง failed เป็น error สำหรับ response
     }
 
     return (res as any).status(200).json({ 
-      status, 
+      status: responseStatus,  // ✅ ใช้ responseStatus ที่แปลงแล้ว
       executionId: execId, 
       finished, 
       ...(documentId && { documentId }),

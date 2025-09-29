@@ -94,7 +94,8 @@ if (existingJob) {
         $unset: {
           executionId: '',
           startTime: '',
-          error: ''
+          error: '',
+          executionIdHistory: ''
         }
       }
     );

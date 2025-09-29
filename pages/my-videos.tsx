@@ -16,14 +16,16 @@ interface Folders {
 interface Clip {
   video?: string;
   finalVideo?: string;
-  createdAt: string | { $date: string };
+  createdAt: string | { $date: string }| null;
+  tokenDeducted?: boolean;
 }
 
 interface ExecutionHistory {
   executionId: string;
-  startTime: string | { $date: string };
-  endTime: string | { $date: string };
+  startTime?: string | { $date: string } | null;
+  endTime?: string | { $date: string } | null;
   workflowStatus: string;
+  error?: string;
 }
 
 interface HistoryVideo {
@@ -41,11 +43,29 @@ interface HistoryVideo {
 const BASE_VIDEO_URL = "http://192.168.70.166:8080";
 // const BASE_VIDEO_URL = "http://192.168.1.109:8080";
 
-// Helper function to parse dates
-function parseDate(value: string | { $date: string }): Date {
-  if (typeof value === "string") return new Date(value);
-  return new Date(value.$date);
+// Helper function to parse dates safely
+function parseDate(value: string | { $date: string } | null | undefined): Date {
+  if (!value) {
+    return new Date(); // Return current date as fallback
+  }
+  
+  if (typeof value === "string") {
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? new Date() : date;
+  }
+  
+  if (typeof value === "object" && value.$date) {
+    const date = new Date(value.$date);
+    return isNaN(date.getTime()) ? new Date() : date;
+  }
+  
+  return new Date();
 }
+// // Helper function to parse dates
+// function parseDate(value: string | { $date: string }): Date {
+//   if (typeof value === "string") return new Date(value);
+//   return new Date(value.$date);
+// }
 
 function formatDateTime(date: Date): string {
   const datePart = date.toLocaleDateString("en-US", {
@@ -186,7 +206,8 @@ function GeneratedClips({
                       </p>
                     </div>
                     <p className="text-xs text-slate-500 mb-2">
-                      Created: {formatDateTime(parseDate(clip.createdAt))}
+                      {/* Created: {formatDateTime(parseDate(clip.createdAt))} */}
+                      Created:{clip.createdAt ? formatDateTime(parseDate(clip.createdAt)) : "Unknown"}
                     </p>
                     <button
                       onClick={(e) => {
@@ -259,7 +280,8 @@ function FinalVideo({ video }: { video: HistoryVideo }) {
                   style={{ maxHeight: "180px" }}
                 />
                 <p className="text-xs text-emerald-600 font-medium">
-                  Completed: {formatDateTime(parseDate(clip.createdAt))}
+                  {/* Completed: {formatDateTime(parseDate(clip.createdAt))} */}
+                   Completed: {clip.createdAt ? formatDateTime(parseDate(clip.createdAt)) : "Unknown"}
                 </p>
               </div>
             );
@@ -511,7 +533,8 @@ export default function HistoryVideos() {
                             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                           />
                         </svg>
-                        Uploaded {formatDateTime(parseDate(video.createdAt))}
+                        {video.createdAt ? formatDateTime(parseDate(video.createdAt)) : "Unknown date"}
+                        {/* Uploaded {formatDateTime(parseDate(video.createdAt))} */}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2">
