@@ -23,7 +23,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     reason: string;
     type: string;
     executionId?: string;
-    video?: string;
+    zipId?: ObjectId;  
+    folderName?:string;     // ✅ เพิ่ม field zipId
+    fileName?: string;    // ✅ เพิ่ม field fileName (originalName)
+    // video?: string;
   }
 
   // ✅ แก้ไข: เพิ่ม interface สำหรับ token history
@@ -41,6 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   interface Clip {
     video?: string;
     finalVideo?: string;
+    folderName?:string;
     createdAt: Date;
     tokenDeducted?: boolean; // ⚠️ เพิ่ม field นี้
   }
@@ -50,15 +54,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     _id: ObjectId;
     executionId: string;
     userId: string;
+    originalName: string;  // ✅ เพิ่ม originalName
     clips: Clip[];
     status?: string;
   }
 
-  const { executionId, video, resultVideo } = req.body;
+  const { executionId, video, resultVideo, folderName } = req.body;
   
   if (!executionId || (!video && !resultVideo)) {
     return (res as any).status(400).json({ status: 'error', message: 'Missing required fields' });
   }
+
+//   if (!folderName) {
+//   return (res as any).status(400).json({ status: 'error', message: 'Missing folderName' });
+// }
 
   try {
     const client = await clientPromise;
@@ -73,7 +82,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await listFileCollection.updateOne(
           { executionId },
           {
-            $push: { clips: { video, createdAt: new Date(), tokenDeducted: true  } },
+            $push: { clips: { 
+              video,
+              folderName, 
+              createdAt: new Date(), 
+              tokenDeducted: true  } },
             $set: { status: 'running' }
           },
           { upsert: true }
@@ -109,7 +122,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 reason: 'สร้างคลิปวิดีโอสำเร็จ',
                 type: 'video_creation',
                 executionId,
-                video,
+                zipId: fileDoc._id,
+                folderName,
+                fileName: fileDoc.originalName
+                // video,
             });
             console.log(`✅ Deducted 1 token from user ${fileDoc.userId} for video clip.`);
         }
@@ -136,6 +152,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           reason: 'ได้รับวิดีโอรวมเรียบร้อย',
           type: 'final_video_completed',
           executionId,
+          zipId: fileDoc._id,
+          folderName,
+          fileName: fileDoc.originalName,
         });
 
         console.log(`✅ Recorded final video completion for user ${fileDoc.userId}.`);

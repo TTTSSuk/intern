@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return (res as any).status(200).json({ 
         status: 'error', 
         finished: true, 
-        error: 'Execution not found on N8N',
+        // error: 'Execution not found on N8N',
         executionId: execId,
         documentId
       });
@@ -164,6 +164,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           clipsFromN8N, 
           foldersFromN8N
         );
+
+          // 🔥 เพิ่มโค้ดส่วนนี้เพื่อลบ Field "error" หลักออก
+        // โดยจะทำหลังจากบันทึก error message (ถ้ามี) ลงใน executionIdHistory แล้ว
+        await collection.updateOne(
+            { _id: new ObjectId(documentId!) },
+            { $unset: { error: '' } } 
+        );
+        console.log(`✅ Successfully unset main 'error' field for ${documentId}`);
+        
         console.log(`✅ Successfully updated DB for ${documentId}`);
       } catch (updateError) {
         console.error(`❌ Failed to update DB:`, updateError);

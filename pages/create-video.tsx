@@ -31,6 +31,11 @@ export default function CreateVideo() {
   const [error, setError] = useState<string | null>(null);
   const [clips, setClips] = useState<Clip[]>([]);
   const [finalVideo, setFinalVideo] = useState<Clip | null>(null);
+  const [tokenPopup, setTokenPopup] = useState<{
+    visible: boolean;
+    tokensUsed?: number;
+    remainingTokens?: number;
+  }>({ visible: false, tokensUsed: 0, remainingTokens: 0 });
 
   const { currentStep, setCurrentStep } = useStep();
   const steps = ['อัปโหลดไฟล์', 'รายการไฟล์', 'สร้างวิดีโอ'];
@@ -84,10 +89,23 @@ export default function CreateVideo() {
 
       const data = await res.json();
       console.log('API data:', data);
+      // ตรวจสอบว่างานเสร็จสิ้นและมีข้อมูล token
+      const newStatus = data.status || 'unknown';
+      const isCompleted = newStatus === 'succeeded' || newStatus === 'completed';
+      const wasNotCompleted = status?.status !== 'succeeded' && status?.status !== 'completed';
+      
+      if (isCompleted && wasNotCompleted && data.tokensUsed !== undefined && data.remainingTokens !== undefined) {
+        setTokenPopup({ 
+          visible: true, 
+          tokensUsed: data.tokensUsed,
+          remainingTokens: data.remainingTokens
+        });
+      }
+      
       setStatus({
         _id: fileId,
         executionId: data.executionId || null,
-        status: data.status || 'unknown',
+        status: newStatus,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         queuePosition: data.queuePosition
@@ -140,8 +158,6 @@ export default function CreateVideo() {
       updatedAt: new Date().toISOString() 
     });
 
-     // ⚠️ เพิ่มโค้ดส่วนนี้เพื่อดึง userId ที่เหมาะสม
-    // คุณต้องแน่ใจว่าได้ดึง userId มาจากที่เหมาะสม เช่น localStorage, context หรือ auth hook
     const userId = localStorage.getItem('loggedInUser'); 
     if (!userId) {
       setError("User ID not found.");
@@ -156,12 +172,10 @@ export default function CreateVideo() {
         body: JSON.stringify({ fileId: id, userId: userId }) 
       });
 
-      // ✅ จุดที่ต้องแก้ไข: เพิ่มการตรวจสอบสถานะ 402 ที่นี่
       if (res.status === 402) {
         const result = await res.json();
         setError(result.message || 'จำนวน Token ไม่พอ');
         setLoading(false);
-        // ไม่ต้องทำอะไรต่อ ให้ error alert ทำงาน
         return; 
       }
 
@@ -268,7 +282,6 @@ export default function CreateVideo() {
       />
 
       {!status && !error && <p>กำลังโหลดสถานะ...</p>}
-      {/* {error && <p className="text-red-600">เกิดข้อผิดพลาด: {error}</p>} */}
 
       <div className="min-h-screen">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -326,7 +339,7 @@ export default function CreateVideo() {
                   </div>
                 )}
 
-                {status.executionId && (
+                {status.executionId && status.status !== 'queued' && ( 
                   <div className="bg-white/70 rounded-lg p-4">
                     <p className="text-sm text-gray-500 mb-1">Execution ID</p>
                     <p className="font-mono text-sm truncate">{status.executionId}</p>
@@ -360,7 +373,7 @@ export default function CreateVideo() {
 
           {/* Error Alert */}
 {error && (
-  <div className="fixed inset-0 flex items-center justify-center z-50">
+  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30">
     <div className="bg-white border-2 border-red-200 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl animate-fade-in">
       <div className="flex items-center space-x-4">
         <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
@@ -383,6 +396,44 @@ export default function CreateVideo() {
   </div>
 )}
 
+{/* Token Usage Popup */}
+{tokenPopup.visible && (
+  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30">
+    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-fade-in">
+      <div className="text-center mb-6">
+        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <span className="text-white text-3xl">✓</span>
+        </div>
+        <h3 className="font-bold text-green-900 text-2xl mb-2">สร้างวิดีโอสำเร็จ!</h3>
+      </div>
+      
+      <div className="space-y-4 mb-6">
+        <div className="bg-white rounded-lg p-4 border border-green-200">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600 font-medium">เหรียญที่ใช้ไป:</span>
+            <span className="text-red-600 font-bold text-xl">-{tokenPopup.tokensUsed || 0} 🪙</span>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg p-4 border border-green-200">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600 font-medium">เหรียญคงเหลือ:</span>
+            <span className="text-green-600 font-bold text-xl">{tokenPopup.remainingTokens || 0} 🪙</span>
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex justify-end">
+        <button
+          onClick={() => setTokenPopup({ visible: false, tokensUsed: 0, remainingTokens: 0 })}
+          className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-semibold"
+        >
+          รับทราบ
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+    
           {/* Generated Clips */}
           {clips.length > 0 && (
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-200">
@@ -495,38 +546,6 @@ export default function CreateVideo() {
               )}
             </button>
             
-            {/* Next / Back Buttons */}
-            {/* {(status?.status === 'succeeded' || status?.status === 'completed' || status?.status === 'error') && (
-              <div className="text-center mt-6 flex flex-col sm:flex-row justify-center items-center gap-4">
-                 */}
-                {/* Back button สำหรับ error */}
-                {/* {status.status === 'error' && (
-                  <button
-                    onClick={() => {
-                      setCurrentStep(2);
-                      router.push('/list-file');
-                    }}
-                    className="inline-flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold shadow-lg transition-all duration-300 bg-gray-200 text-gray-800 hover:bg-gray-300"
-                  >
-                    <span>กลับไปหน้าก่อนหน้า</span>
-                  </button>
-                )} */}
-
-                {/* Next button สำหรับ succeeded / error */}
-                {/* <button
-                  onClick={() => {
-                    setCurrentStep(4);
-                    router.push('/my-videos');
-                  }}
-                  className={`inline-flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold shadow-lg transition-all duration-300
-                    ${status.status === 'succeeded' || status.status === 'completed' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'}
-                  `}
-                >
-                  <span>ไปที่วิดีโอของฉัน</span>
-                </button>
-              </div>
-            )} */}
-            
             {(status?.status === 'running' || status?.status === 'starting' || status?.status === 'processing') && (
               <p className="mt-3 text-sm text-gray-600">
                 กระบวนการนี้อาจใช้เวลาสักครู่ หน้าจอจะอัพเดทอัตโนมัติทุก 10 วินาที
@@ -539,39 +558,6 @@ export default function CreateVideo() {
               </p>
             )}
           </div>
-
-          {/* Progress Steps */}
-          {status && (
-            <div className="mt-8 bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">ขั้นตอนการสร้างวิดีโอ</h3>
-              <div className="flex items-center justify-between">
-                <div className={`flex flex-col items-center space-y-2 ${status.status !== 'idle' ? 'text-green-600' : 'text-gray-400'}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${status.status !== 'idle' ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-500'}`}>
-                    {status.status !== 'idle' ? '✓' : '1'}
-                  </div>
-                  <span className="text-sm font-medium">เริ่มต้น</span>
-                </div>
-                
-                <div className={`flex-1 h-1 mx-4 ${status.status === 'running' || status.status === 'succeeded' || status.status === 'completed' || status.status === 'processing' ? 'bg-green-500' : status.status === 'queued' ? 'bg-yellow-500' : 'bg-gray-300'}`}></div>
-                
-                <div className={`flex flex-col items-center space-y-2 ${status.status === 'running' || status.status === 'succeeded' || status.status === 'completed' || status.status === 'processing' ? 'text-blue-600' : status.status === 'queued' ? 'text-yellow-600' : 'text-gray-400'}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${status.status === 'running' || status.status === 'processing' ? 'bg-blue-500 text-white animate-pulse' : status.status === 'succeeded' || status.status === 'completed' ? 'bg-green-500 text-white' : status.status === 'queued' ? 'bg-yellow-500 text-white' : 'bg-gray-300 text-gray-500'}`}>
-                    {status.status === 'succeeded' || status.status === 'completed' ? '✓' : status.status === 'running' || status.status === 'processing' ? '⟳' : status.status === 'queued' ? '⏳' : '2'}
-                  </div>
-                  <span className="text-sm font-medium">กำลังประมวลผล</span>
-                </div>
-                
-                <div className={`flex-1 h-1 mx-4 ${status.status === 'succeeded' || status.status === 'completed' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                
-                <div className={`flex flex-col items-center space-y-2 ${status.status === 'succeeded' || status.status === 'completed' ? 'text-green-600' : 'text-gray-400'}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${status.status === 'succeeded' || status.status === 'completed' ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-500'}`}>
-                    {status.status === 'succeeded' || status.status === 'completed' ? '✓' : '3'}
-                  </div>
-                  <span className="text-sm font-medium">เสร็จสิ้น</span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

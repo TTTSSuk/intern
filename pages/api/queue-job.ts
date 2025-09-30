@@ -92,7 +92,7 @@ if (existingJob) {
           updatedAt: now
         },
         $unset: {
-          executionId: '',
+          // executionId: '',
           startTime: '',
           error: '',
           executionIdHistory: ''
