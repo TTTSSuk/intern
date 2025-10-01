@@ -31,6 +31,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         reason: h.reason,
         type: h.type,
         executionId: h.executionId,
+        folderName: h.folderName, 
+        fileName: h.fileName,
         video: h.video,
       })),
     });
