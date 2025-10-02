@@ -1,4 +1,5 @@
-//pages/api/status-wf.ts - Fixed Version
+// //pages/api/status-wf.ts - Fixed Version
+//pages/api/status-wf.ts - With Token Cleanup
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
@@ -20,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const client = await clientPromise;
     const db = client.db('login-form-app');
     const collection = db.collection('listfile');
+    const tokenHistoryCollection = db.collection('token_history');
 
     let execId: string | undefined;
     let documentId: string | null = null;
@@ -47,7 +49,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`📄 Found document: ${documentId}, Status: ${doc.status}, ExecId: ${execId}`);
     
-    // ถ้างานอยู่ใน queue หรือยังไม่มี executionId
     if (!execId || ['queued', 'processing'].includes(doc.status)) {
       console.log(`⏳ Job is in queue/processing state - Status: ${doc.status}`);
       return (res as any).status(200).json({ 
@@ -59,9 +60,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // ✅ แก้ไข: ให้ตรวจสอบจาก N8N เสมอ เพื่ออัปเดต executionIdHistory
-    // เฉพาะงานที่เสร็จสมบูรณ์แล้วและมี executionIdHistory อยู่แล้ว 
-    // ถึงจะคืนค่าทันที
     if (['completed', 'succeeded', 'error'].includes(doc.status) && doc.executionIdHistory) {
       return (res as any).status(200).json({
         status: doc.status,
@@ -73,7 +71,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // เรียก N8N API เพื่อตรวจสอบสถานะ
     const n8nUrl = `${apiBase}/executions/${execId}`;
     console.log(`🌐 Calling N8N API: ${n8nUrl}`);
     
@@ -86,11 +83,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (n8nRes.status === 404) {
       console.warn(`⚠️ Execution ${execId} not found on N8N, updating status to error`);
       const startTime = doc?.startTime || new Date();
+      
+      // 🔥 คืน token ที่จองไว้กลับให้ user
+      await cleanupTokenReservation(doc.userId, doc._id, tokenHistoryCollection);
+      
       await updateExecutionHistory(documentId!, execId, startTime, 'error', 'Execution not found on N8N.');
       return (res as any).status(200).json({ 
         status: 'error', 
         finished: true, 
-        // error: 'Execution not found on N8N',
         executionId: execId,
         documentId
       });
@@ -101,10 +101,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const data = await n8nRes.json();
-    const n8nStatus = data.status;  // ✅ เปลี่ยนชื่อตัวแปรเพื่อความชัดเจน
+    const n8nStatus = data.status;
     const finished = data.finished;
     
-    // Extract clips from N8N response
     const clipsFromN8N = data.data?.resultData?.clips;
     const foldersFromN8N = data.data?.resultData?.folders;
     
@@ -117,7 +116,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       clipsCount: Array.isArray(clipsFromN8N) ? clipsFromN8N.length : 0
     });
 
-    // 🔥 แก้ไขเงื่อนไข: อัปเดตเมื่อ finished = true หรือ status เป็น error/succeeded/failed
     const shouldUpdate = documentId && execId && (finished || ['error', 'succeeded', 'failed'].includes(n8nStatus));
     
     console.log(`🤔 Should update DB?`, {
@@ -129,22 +127,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     if (shouldUpdate) {
-      // ✅ แก้ไข: ใช้ logic ที่ถูกต้องในการแปลง status
       let finalStatus: string;
       let errorMessage: string | undefined;
 
       if (n8nStatus === 'succeeded' || n8nStatus === 'success') {
-        finalStatus = 'completed';  // ✅ succeeded -> completed
-        errorMessage = undefined;
-      } else if (['error', 'failed'].includes(n8nStatus)) {
-        finalStatus = 'error';      // ✅ error/failed -> error
-        errorMessage = getErrorMessage(data);
-      } else if (finished && n8nStatus === 'running') {
-        // กรณีที่ N8N บอกว่า finished แต่ status ยัง running
         finalStatus = 'completed';
         errorMessage = undefined;
+        // 🔥 ลบ token reservation ที่เหลือ (ถ้ามี)
+        await cleanupTokenReservation(doc.userId, doc._id, tokenHistoryCollection);
+      } else if (['error', 'failed'].includes(n8nStatus)) {
+        finalStatus = 'error';
+        errorMessage = getErrorMessage(data);
+        // 🔥 คืน token ที่จองไว้กลับให้ user
+        await cleanupTokenReservation(doc.userId, doc._id, tokenHistoryCollection);
+      } else if (finished && n8nStatus === 'running') {
+        finalStatus = 'completed';
+        errorMessage = undefined;
+        await cleanupTokenReservation(doc.userId, doc._id, tokenHistoryCollection);
       } else {
-        // กรณีอื่นๆ ที่ไม่แน่ใจ
         finalStatus = n8nStatus;
         errorMessage = n8nStatus === 'error' ? getErrorMessage(data) : undefined;
       }
@@ -152,21 +152,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const startTime = doc?.startTime || new Date();
 
       console.log(`💾 Updating DB with final status: ${finalStatus}`);
-      console.log(`📄 Error message: ${errorMessage || 'None'}`);
+      console.log(`📝 Error message: ${errorMessage || 'None'}`);
       
       try {
         await updateExecutionHistory(
           documentId!, 
           execId, 
           startTime, 
-          finalStatus,  // ✅ ใช้ finalStatus ที่แปลงแล้ว
+          finalStatus,
           errorMessage, 
           clipsFromN8N, 
           foldersFromN8N
         );
 
-          // 🔥 เพิ่มโค้ดส่วนนี้เพื่อลบ Field "error" หลักออก
-        // โดยจะทำหลังจากบันทึก error message (ถ้ามี) ลงใน executionIdHistory แล้ว
         await collection.updateOne(
             { _id: new ObjectId(documentId!) },
             { $unset: { error: '' } } 
@@ -181,16 +179,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log(`⭐️ Skipping DB update - conditions not met`);
     }
 
-    // ✅ แก้ไข: ส่ง status ที่ถูกต้องกลับไปยัง client
     let responseStatus = n8nStatus;
     if (finished && (n8nStatus === 'succeeded' || n8nStatus === 'success')) {
-      responseStatus = 'completed';  // ✅ แปลง succeeded เป็น completed สำหรับ response
+      responseStatus = 'completed';
     } else if (finished && ['error', 'failed'].includes(n8nStatus)) {
-      responseStatus = 'error';      // ✅ แปลง failed เป็น error สำหรับ response
+      responseStatus = 'error';
     }
 
     return (res as any).status(200).json({ 
-      status: responseStatus,  // ✅ ใช้ responseStatus ที่แปลงแล้ว
+      status: responseStatus,
       executionId: execId, 
       finished, 
       ...(documentId && { documentId }),
@@ -204,6 +201,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error: 'Internal Server Error',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
+  }
+}
+
+// 🔥 ฟังก์ชันสำหรับลบ token reservation
+async function cleanupTokenReservation(userId: string, zipId: ObjectId, tokenHistoryCollection: any) {
+  try {
+    const result = await tokenHistoryCollection.deleteOne({
+      userId,
+      zipId,
+      type: 'token_reserved'
+    });
+    
+    if (result.deletedCount > 0) {
+      console.log(`✅ Cleaned up token reservation for user ${userId}, zipId ${zipId}`);
+    } else {
+      console.log(`ℹ️ No token reservation found to clean up for user ${userId}, zipId ${zipId}`);
+    }
+  } catch (error) {
+    console.error(`❌ Error cleaning up token reservation:`, error);
   }
 }
 
@@ -229,6 +245,9 @@ function getErrorMessage(data: any): string | undefined {
   }
   return 'Unknown workflow error';
 }
+
+
+
 // import type { NextApiRequest, NextApiResponse } from 'next';
 // import clientPromise from '@/lib/mongodb';
 // import { ObjectId } from 'mongodb';
@@ -236,6 +255,8 @@ function getErrorMessage(data: any): string | undefined {
 
 // export default async function handler(req: NextApiRequest, res: NextApiResponse) {
 //   const { id, executionId } = req.query;
+
+//   console.log(`🔍 Status check request - ID: ${id}, ExecutionId: ${executionId}`);
 
 //   const apiKey = process.env.N8N_API_KEY;
 //   const apiBase = process.env.N8N_API_BASE_URL;
@@ -269,11 +290,15 @@ function getErrorMessage(data: any): string | undefined {
 //     }
     
 //     if (!doc) {
+//       console.log(`❌ Document not found for ID: ${id || executionId}`);
 //       return (res as any).status(404).json({ error: 'File not found' });
 //     }
+
+//     console.log(`📄 Found document: ${documentId}, Status: ${doc.status}, ExecId: ${execId}`);
     
 //     // ถ้างานอยู่ใน queue หรือยังไม่มี executionId
 //     if (!execId || ['queued', 'processing'].includes(doc.status)) {
+//       console.log(`⏳ Job is in queue/processing state - Status: ${doc.status}`);
 //       return (res as any).status(200).json({ 
 //         status: doc.status || 'queued',
 //         finished: false, 
@@ -283,8 +308,10 @@ function getErrorMessage(data: any): string | undefined {
 //       });
 //     }
 
-//     // ถ้างานเสร็จแล้ว ไม่ต้องเรียก N8N API อีก
-//     if (['completed', 'succeeded', 'error'].includes(doc.status)) {
+//     // ✅ แก้ไข: ให้ตรวจสอบจาก N8N เสมอ เพื่ออัปเดต executionIdHistory
+//     // เฉพาะงานที่เสร็จสมบูรณ์แล้วและมี executionIdHistory อยู่แล้ว 
+//     // ถึงจะคืนค่าทันที
+//     if (['completed', 'succeeded', 'error'].includes(doc.status) && doc.executionIdHistory) {
 //       return (res as any).status(200).json({
 //         status: doc.status,
 //         finished: true,
@@ -297,7 +324,7 @@ function getErrorMessage(data: any): string | undefined {
 
 //     // เรียก N8N API เพื่อตรวจสอบสถานะ
 //     const n8nUrl = `${apiBase}/executions/${execId}`;
-//     console.log(`🔍 Checking N8N status: ${n8nUrl}`);
+//     console.log(`🌐 Calling N8N API: ${n8nUrl}`);
     
 //     const n8nRes = await fetch(n8nUrl, {
 //       headers: {
@@ -306,13 +333,13 @@ function getErrorMessage(data: any): string | undefined {
 //     });
 
 //     if (n8nRes.status === 404) {
-//       console.warn(`❌ Execution ${execId} not found on N8N, updating status to error`);
+//       console.warn(`⚠️ Execution ${execId} not found on N8N, updating status to error`);
 //       const startTime = doc?.startTime || new Date();
 //       await updateExecutionHistory(documentId!, execId, startTime, 'error', 'Execution not found on N8N.');
 //       return (res as any).status(200).json({ 
 //         status: 'error', 
 //         finished: true, 
-//         error: 'Execution not found on N8N',
+//         // error: 'Execution not found on N8N',
 //         executionId: execId,
 //         documentId
 //       });
@@ -323,27 +350,96 @@ function getErrorMessage(data: any): string | undefined {
 //     }
 
 //     const data = await n8nRes.json();
-//     const status = data.status;
+//     const n8nStatus = data.status;  // ✅ เปลี่ยนชื่อตัวแปรเพื่อความชัดเจน
 //     const finished = data.finished;
     
 //     // Extract clips from N8N response
 //     const clipsFromN8N = data.data?.resultData?.clips;
 //     const foldersFromN8N = data.data?.resultData?.folders;
     
-//     console.log(`📊 N8N Status for ${documentId}: { executionId: ${execId}, status: ${status}, finished: ${finished} }`);
+//     console.log(`📊 N8N Response for ${documentId}:`, {
+//       executionId: execId,
+//       n8nStatus: n8nStatus,
+//       finished: finished,
+//       hasClips: !!clipsFromN8N,
+//       hasFolders: !!foldersFromN8N,
+//       clipsCount: Array.isArray(clipsFromN8N) ? clipsFromN8N.length : 0
+//     });
 
-//     // ถ้างานเสร็จแล้ว ให้อัพเดทฐานข้อมูล
-//     if (documentId && finished && execId) {
-//       const finalStatus = status === 'succeeded' ? 'completed' : 'error';
-//       const errorMessage = status === 'error' ? getErrorMessage(data) : undefined;
+//     // 🔥 แก้ไขเงื่อนไข: อัปเดตเมื่อ finished = true หรือ status เป็น error/succeeded/failed
+//     const shouldUpdate = documentId && execId && (finished || ['error', 'succeeded', 'failed'].includes(n8nStatus));
+    
+//     console.log(`🤔 Should update DB?`, {
+//       documentId: !!documentId,
+//       execId: !!execId,
+//       finished: finished,
+//       n8nStatus: n8nStatus,
+//       shouldUpdate: shouldUpdate
+//     });
+
+//     if (shouldUpdate) {
+//       // ✅ แก้ไข: ใช้ logic ที่ถูกต้องในการแปลง status
+//       let finalStatus: string;
+//       let errorMessage: string | undefined;
+
+//       if (n8nStatus === 'succeeded' || n8nStatus === 'success') {
+//         finalStatus = 'completed';  // ✅ succeeded -> completed
+//         errorMessage = undefined;
+//       } else if (['error', 'failed'].includes(n8nStatus)) {
+//         finalStatus = 'error';      // ✅ error/failed -> error
+//         errorMessage = getErrorMessage(data);
+//       } else if (finished && n8nStatus === 'running') {
+//         // กรณีที่ N8N บอกว่า finished แต่ status ยัง running
+//         finalStatus = 'completed';
+//         errorMessage = undefined;
+//       } else {
+//         // กรณีอื่นๆ ที่ไม่แน่ใจ
+//         finalStatus = n8nStatus;
+//         errorMessage = n8nStatus === 'error' ? getErrorMessage(data) : undefined;
+//       }
+
 //       const startTime = doc?.startTime || new Date();
 
-//       console.log(`💾 Updating final status to: ${finalStatus}`);
-//       await updateExecutionHistory(documentId!, execId, startTime, finalStatus, errorMessage, clipsFromN8N, foldersFromN8N);
+//       console.log(`💾 Updating DB with final status: ${finalStatus}`);
+//       console.log(`📄 Error message: ${errorMessage || 'None'}`);
+      
+//       try {
+//         await updateExecutionHistory(
+//           documentId!, 
+//           execId, 
+//           startTime, 
+//           finalStatus,  // ✅ ใช้ finalStatus ที่แปลงแล้ว
+//           errorMessage, 
+//           clipsFromN8N, 
+//           foldersFromN8N
+//         );
+
+//           // 🔥 เพิ่มโค้ดส่วนนี้เพื่อลบ Field "error" หลักออก
+//         // โดยจะทำหลังจากบันทึก error message (ถ้ามี) ลงใน executionIdHistory แล้ว
+//         await collection.updateOne(
+//             { _id: new ObjectId(documentId!) },
+//             { $unset: { error: '' } } 
+//         );
+//         console.log(`✅ Successfully unset main 'error' field for ${documentId}`);
+        
+//         console.log(`✅ Successfully updated DB for ${documentId}`);
+//       } catch (updateError) {
+//         console.error(`❌ Failed to update DB:`, updateError);
+//       }
+//     } else {
+//       console.log(`⭐️ Skipping DB update - conditions not met`);
+//     }
+
+//     // ✅ แก้ไข: ส่ง status ที่ถูกต้องกลับไปยัง client
+//     let responseStatus = n8nStatus;
+//     if (finished && (n8nStatus === 'succeeded' || n8nStatus === 'success')) {
+//       responseStatus = 'completed';  // ✅ แปลง succeeded เป็น completed สำหรับ response
+//     } else if (finished && ['error', 'failed'].includes(n8nStatus)) {
+//       responseStatus = 'error';      // ✅ แปลง failed เป็น error สำหรับ response
 //     }
 
 //     return (res as any).status(200).json({ 
-//       status, 
+//       status: responseStatus,  // ✅ ใช้ responseStatus ที่แปลงแล้ว
 //       executionId: execId, 
 //       finished, 
 //       ...(documentId && { documentId }),
@@ -361,6 +457,8 @@ function getErrorMessage(data: any): string | undefined {
 // }
 
 // function getErrorMessage(data: any): string | undefined {
+//   console.log(`🔍 Extracting error message from:`, data);
+  
 //   try {
 //     if (data.data?.resultData?.error?.message) {
 //       return data.data.resultData.error.message;
@@ -372,7 +470,7 @@ function getErrorMessage(data: any): string | undefined {
 //     if (data.stoppedAt && data.data?.resultData?.error) {
 //       return data.data.resultData.error.message || 'Workflow stopped with error';
 //     }
-//     if (['error', 'stopped'].includes(data.status)) {
+//     if (['error', 'stopped', 'failed'].includes(data.status)) {
 //       return `Workflow ended with status: ${data.status}`;
 //     }
 //   } catch (err) {

@@ -76,31 +76,48 @@ export default function Layout({
   return (
     <div className={`${backgroundColor} min-h-screen flex flex-col`}>
       {/* Header */}
-      <header className="fixed top-0 w-full bg-gray-50 shadow-md z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-          {/* โลโก้ */}
-          <div
-            onClick={() => router.push("/dashboard")}
-            className="text-indigo-600 font-extrabold text-2xl cursor-pointer select-none"
-          >
-            MyLogo
-          </div>
+      <header className="fixed top-0 w-full bg-gray-50 shadow-md z-50 h-16">
+  <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-full">
+    {/* Logo */}
+    <div onClick={() => router.push("/dashboard")} className="cursor-pointer select-none flex items-center">
+<img
+  src="/images/logo.png"
+  alt="MediaFlux Logo"
+  className="h-35 sm:h-14 md:h-30 w-auto object-contain"
+/>
+    </div>
 
-          {/* เมนูกลาง */}
-          <nav className="hidden md:flex space-x-8 text-gray-700 font-medium">
+    {/* Navbar */}
+    <nav className="hidden md:flex space-x-8 text-gray-700 font-medium h-full items-center">
+         {<button
+              onClick={() => router.push("/list-file")}
+              className="hover:text-indigo-600 transition"
+            >
+              รายการไฟล์
+            </button>}{/* <button
+              onClick={() => router.push("/upload-zip")}
+              className="hover:text-indigo-600 transition"
+            >
+              อัปไฟล์
+            </button>
             <button
               onClick={() => router.push("/list-file")}
               className="hover:text-indigo-600 transition"
             >
               รายการไฟล์
-            </button>
+            </button> */}
             <button
               onClick={() => router.push("/my-videos")}
               className="hover:text-indigo-600 transition"
             >
               วิดีโอของฉัน
             </button>
-          </nav>
+            {/* <button
+              onClick={() => router.push("/create-video")}
+              className="hover:text-indigo-600 transition">
+              สร้างวิดิโอ
+            </button> */}
+    </nav>
 
           {/* ขวา: Token + Avatar + Dropdown */}
           <div className="flex items-center space-x-4" ref={dropdownRef}>
@@ -145,37 +162,38 @@ export default function Layout({
               </button>
 
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 min-w-[180px] max-w-[240px] bg-white rounded-md shadow-lg py-1 z-50">
-                  <button
-                    onClick={handleEditProfile}
-                    className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-indigo-100"
-                  >
-                    แก้ไขโปรไฟล์
-                  </button>
-                  <button
-                    onClick={handleChangePassword}
-                    className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-indigo-100"
-                  >
-                    เปลี่ยนรหัสผ่าน
-                  </button>
-                  <button
-                    onClick={() => {
-                      setDropdownOpen(false);
-                      router.push("/TokenHistory");
-                    }}
-                    className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-indigo-100"
-                  >
-                    ดูประวัติ Token
-                  </button>
-                  <hr className="my-1 border-gray-200" />
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full px-4 py-2 text-left text-red-600 font-semibold hover:bg-red-100"
-                  >
-                    ออกจากระบบ
-                  </button>
-                </div>
-              )}
+<div className="absolute right-0 mt-2 min-w-[180px] max-w-[240px] bg-white rounded-md shadow-2xl ring-1 ring-gray-200 py-1 z-50 transition-shadow duration-300 ease-out">
+    <button
+      onClick={handleEditProfile}
+      className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-indigo-100"
+    >
+      แก้ไขโปรไฟล์
+    </button>
+    <button
+      onClick={handleChangePassword}
+      className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-indigo-100"
+    >
+      เปลี่ยนรหัสผ่าน
+    </button>
+    <button
+      onClick={() => {
+        setDropdownOpen(false);
+        router.push("/TokenHistory");
+      }}
+      className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-indigo-100"
+    >
+      ดูประวัติ Token
+    </button>
+    <hr className="my-1 border-gray-200" />
+    <button
+      onClick={handleLogout}
+      className="block w-full px-4 py-2 text-left text-red-600 font-semibold hover:bg-red-100"
+    >
+      ออกจากระบบ
+    </button>
+  </div>
+)}
+
             </div>
           </div>
         </div>

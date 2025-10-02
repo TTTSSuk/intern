@@ -12,6 +12,12 @@ import {
   CheckCircle,
   Clock
 } from 'lucide-react'
+// import { Play } from "lucide-react";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Autoplay, Navigation } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/navigation";
+
 
 const BASE_VIDEO_URL = "http://192.168.70.166:8080"
 
@@ -47,6 +53,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(0)
   const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const videoSectionRef = useRef<HTMLDivElement>(null)  // เพิ่มบรรทัดนี้
   const router = useRouter()
 
   useEffect(() => {
@@ -90,6 +97,12 @@ export default function Dashboard() {
   const goToFiles = () => router.push('/list-file')
   const goToComplete = () => router.push('/my-videos')
   const goToTokens = () => router.push('/TokenHistory')
+  const scrollToVideos = () => {
+  videoSectionRef.current?.scrollIntoView({ 
+    behavior: 'smooth', 
+    block: 'center'
+  })
+}
 
   const countFiles = (files: UserFile[]) => files.length
   const countVideos = (files: UserFile[]) =>
@@ -228,8 +241,9 @@ export default function Dashboard() {
           </div>
 
           <div
-            className="cursor-pointer bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition-all"
-          >
+  onClick={scrollToVideos}  // เพิ่มบรรทัดนี้
+  className="cursor-pointer bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition-all"
+>
             <div className="flex items-center justify-between mb-4">
               <div className="bg-green-100 rounded-xl p-3">
                 <CheckCircle className="w-6 h-6 text-green-600" />
@@ -242,78 +256,106 @@ export default function Dashboard() {
         </div>
 
         {finalVideos.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Play className="w-6 h-6 text-blue-600" />
-                วิดีโอล่าสุด
-              </h2>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={prevPage}
-                  disabled={totalPages <= 1}
-                  className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+<div 
+    ref={videoSectionRef} 
+    className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-200 p-8 mb-6"
+  >    {/* Header */}
+    <div className="flex items-center justify-between mb-6">
+      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+        <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+          <Play className="w-6 h-6 text-white fill-white" />
+        </div>
+        วิดีโอล่าสุด
+      </h2>
+      <div className="flex items-center gap-2">
+        {/* <span className="text-sm text-gray-500 font-medium">
+          {finalVideos.length} วิดีโอ
+        </span> */}
+      </div>
+    </div>
+
+    {/* Swiper Carousel */}
+    <div className="relative group">
+      <Swiper
+        modules={[Navigation, Autoplay]}
+        spaceBetween={16}
+        slidesPerView={3}
+        slidesPerGroup={1}
+        navigation={{
+          prevEl: '.swiper-button-prev-custom',
+          nextEl: '.swiper-button-next-custom',
+        }}
+        autoplay={{
+          delay: 5000,
+          disableOnInteraction: false,
+        }}
+        breakpoints={{
+          320: { slidesPerView: 1 },
+          768: { slidesPerView: 2 },
+          1024: { slidesPerView: 3 },
+        }}
+        className="pb-2"
+      >
+        {finalVideos.map((video, index) => (
+          <SwiperSlide key={`${video.fileId}-${index}`}>
+            <div className="bg-white rounded-xl overflow-hidden border border-gray-200 
+                          shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              {/* Video Container - แค่วิดีโออย่างเดียว */}
+              <div className="relative bg-gradient-to-br from-gray-900 to-gray-800" 
+                   style={{ paddingTop: "56.25%" }}>
+                <video
+                  controls
+                  className="absolute top-0 left-0 w-full h-full"
+                  style={{ objectFit: "contain" }}
+                  preload="metadata"
+                  onError={(e) => {
+                    console.error('Video error:', video.videoUrl);
+                    console.log('Video path:', video.videoUrl);
+                  }}
                 >
-                  <ChevronLeft className="w-5 h-5 text-gray-600" />
-                </button>
-                <span className="text-sm text-gray-600 font-medium">
-                  {currentPage + 1} / {totalPages}
-                </span>
-                <button
-                  onClick={nextPage}
-                  disabled={totalPages <= 1}
-                  className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="w-5 h-5 text-gray-600" />
-                </button>
+                  <source src={video.videoUrl} type="video/mp4" />
+                  ไม่สามารถโหลดวิดีโอได้
+                </video>
               </div>
             </div>
+          </SwiperSlide>
+        ))}
+      </Swiper>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {currentVideos.map((video, index) => (
-                <div key={`${video.fileId}-${index}`} className="bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
-                  <div className="relative bg-black" style={{ paddingTop: '56.25%' }}>
-                    <video
-                      controls
-                      className="absolute top-0 left-0 w-full h-full"
-                      style={{ objectFit: 'contain' }}
-                    >
-                      <source src={video.videoUrl} type="video/mp4" />
-                      เบราว์เซอร์ของคุณไม่รองรับการเล่นวิดีโอ
-                    </video>
-                  </div>
-                  {/* <div className="p-3">
-                    <p className="font-semibold text-gray-900 text-sm truncate">{video.fileName}</p>
-                    <p className="text-xs text-gray-600 mt-1 truncate">โฟลเดอร์: {video.folderName}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="flex items-center gap-1 text-xs text-gray-600">
-                        <Calendar className="w-3 h-3" />
-                        {formatDate(video.createdAt)}
-                      </span>
-                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                        video.status === 'completed' 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {video.status === 'completed' ? (
-                          <>
-                            <CheckCircle className="w-3 h-3" />
-                            สำเร็จ
-                          </>
-                        ) : (
-                          <>
-                            <Clock className="w-3 h-3" />
-                            กำลังประมวลผล
-                          </>
-                        )}
-                      </span>
-                    </div>
-                  </div> */}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      {/* Custom Navigation Buttons */}
+      <button
+        className="swiper-button-prev-custom absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 
+                   bg-white hover:bg-gray-50 rounded-full p-3 shadow-lg border border-gray-200
+                   opacity-0 group-hover:opacity-100 transition-all duration-300
+                   hover:scale-110 active:scale-95"
+        aria-label="Previous"
+      >
+        <ChevronLeft className="w-6 h-6 text-gray-700" />
+      </button>
+
+      <button
+        className="swiper-button-next-custom absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 
+                   bg-white hover:bg-gray-50 rounded-full p-3 shadow-lg border border-gray-200
+                   opacity-0 group-hover:opacity-100 transition-all duration-300
+                   hover:scale-110 active:scale-95"
+        aria-label="Next"
+      >
+        <ChevronRight className="w-6 h-6 text-gray-700" />
+      </button>
+    </div>
+
+    {/* Progress Indicator Dots */}
+    <div className="flex justify-center gap-2 mt-6">
+      {Array.from({ length: Math.min(finalVideos.length, 5) }).map((_, index) => (
+        <div
+          key={index}
+          className="w-2 h-2 rounded-full bg-gray-300 hover:bg-blue-500 
+                   transition-colors duration-300 cursor-pointer"
+        />
+      ))}
+    </div>
+  </div>
+)}
 
         {finalVideos.length === 0 && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center mb-6">
