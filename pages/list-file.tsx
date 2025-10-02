@@ -316,7 +316,7 @@ export default function ListFile() {
         <ul className="text-xs text-blue-700 space-y-0.5 ml-3">
           <li>- ต้องมีไฟล์ <code className="bg-blue-100 px-1 rounded">prompt.txt</code></li>
           <li>- ต้องมีไฟล์ <code className="bg-blue-100 px-1 rounded">voice.txt</code></li>
-          <li>- ต้องมีไฟล์รูปภาพ (.png, .jpg, .jpeg) อย่างน้อย 1 ไฟล์</li>
+          <li>- ต้องมีไฟล์รูปภาพ <code className="bg-blue-100 px-1 rounded">(.png, .jpg, .jpeg)</code></li>
         </ul>
       </div>
       

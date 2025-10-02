@@ -852,7 +852,7 @@ export default function HistoryVideos() {
                     );
                   })()}
                 </div>
-                <div>
+                {/* <div>
                   <h4 className="text-sm font-medium text-slate-700 mb-3">
                     Prompt
                   </h4>
@@ -897,7 +897,7 @@ export default function HistoryVideos() {
                       </div>
                     );
                   })()}
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
