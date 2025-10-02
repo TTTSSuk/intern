@@ -1,6 +1,6 @@
-//D:\internNR\login-form-app\pages\my-videos.tsx
-
+//pages\my-videos.tsx
 import { useEffect, useState } from "react";
+import { XMarkIcon, CalendarIcon, FunnelIcon } from "@heroicons/react/24/outline";
 
 // Define interfaces
 interface Subfolder {
@@ -16,7 +16,7 @@ interface Folders {
 interface Clip {
   video?: string;
   finalVideo?: string;
-  createdAt: string | { $date: string }| null;
+  createdAt: string | { $date: string } | null;
   tokenDeducted?: boolean;
 }
 
@@ -41,7 +41,6 @@ interface HistoryVideo {
 }
 
 const BASE_VIDEO_URL = "http://192.168.70.166:8080";
-// const BASE_VIDEO_URL = "http://192.168.1.109:8080";
 
 // Helper function to parse dates safely
 function parseDate(value: string | { $date: string } | null | undefined): Date {
@@ -61,11 +60,6 @@ function parseDate(value: string | { $date: string } | null | undefined): Date {
   
   return new Date();
 }
-// // Helper function to parse dates
-// function parseDate(value: string | { $date: string }): Date {
-//   if (typeof value === "string") return new Date(value);
-//   return new Date(value.$date);
-// }
 
 function formatDateTime(date: Date): string {
   const datePart = date.toLocaleDateString("en-US", {
@@ -206,8 +200,7 @@ function GeneratedClips({
                       </p>
                     </div>
                     <p className="text-xs text-slate-500 mb-2">
-                      {/* Created: {formatDateTime(parseDate(clip.createdAt))} */}
-                      Created:{clip.createdAt ? formatDateTime(parseDate(clip.createdAt)) : "Unknown"}
+                      Created: {clip.createdAt ? formatDateTime(parseDate(clip.createdAt)) : "Unknown"}
                     </p>
                     <button
                       onClick={(e) => {
@@ -280,8 +273,7 @@ function FinalVideo({ video }: { video: HistoryVideo }) {
                   style={{ maxHeight: "180px" }}
                 />
                 <p className="text-xs text-emerald-600 font-medium">
-                  {/* Completed: {formatDateTime(parseDate(clip.createdAt))} */}
-                   Completed: {clip.createdAt ? formatDateTime(parseDate(clip.createdAt)) : "Unknown"}
+                  Completed: {clip.createdAt ? formatDateTime(parseDate(clip.createdAt)) : "Unknown"}
                 </p>
               </div>
             );
@@ -295,7 +287,11 @@ function FinalVideo({ video }: { video: HistoryVideo }) {
 export default function HistoryVideos() {
   const [videos, setVideos] = useState<HistoryVideo[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [searchTerm, setSearchTerm] = useState<string>(""); // เพิ่ม state สำหรับการค้นหา
+  const [searchTerm, setSearchTerm] = useState<string>(""); // ค้นหาชื่อหรือ ID
+  const [dateFrom, setDateFrom] = useState<string>(""); // วันที่เริ่มต้น
+  const [dateTo, setDateTo] = useState<string>(""); // วันที่สิ้นสุด
+  const [statusFilter, setStatusFilter] = useState<string>("all"); // สถานะ (all, completed, running, error)
+  const [showFilterModal, setShowFilterModal] = useState<boolean>(false); // Modal สำหรับตัวกรอง
   const [selectedClip, setSelectedClip] = useState<{
     index: number;
     clip: Clip;
@@ -318,10 +314,25 @@ export default function HistoryVideos() {
     }
   };
 
-  // ฟังก์ชันสำหรับกรองวิดีโอตามการค้นหา
-  const filteredVideos = videos.filter((video) =>
-    video.originalName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // ฟังก์ชันสำหรับกรองวิดีโอ
+  const filteredVideos = videos.filter((video) => {
+    const matchesSearchTerm =
+      video.originalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (video.executionIdHistory?.executionId?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+
+    const videoDate = parseDate(video.createdAt);
+    const matchesDateFrom = dateFrom ? videoDate >= new Date(dateFrom) : true;
+    const matchesDateTo = dateTo
+      ? videoDate <= new Date(new Date(dateTo).setHours(23, 59, 59, 999))
+      : true;
+
+    const matchesStatus =
+      statusFilter === "all" ||
+      video.executionIdHistory?.workflowStatus === statusFilter ||
+      video.status === statusFilter;
+
+    return matchesSearchTerm && matchesDateFrom && matchesDateTo && matchesStatus;
+  });
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -339,7 +350,6 @@ export default function HistoryVideos() {
         const generatedVideos = data.filter((v) => v.executionIdHistory);
         setVideos(generatedVideos);
         
-        // เพิ่ม console.log เพื่อ debug
         console.log('Fetched videos:', generatedVideos);
         generatedVideos.forEach((video, index) => {
           console.log(`Video ${index + 1} clips:`, video.clips);
@@ -347,6 +357,7 @@ export default function HistoryVideos() {
         });
       } catch (error) {
         console.error(error);
+        setLoading(false);
       } finally {
         setLoading(false);
       }
@@ -426,7 +437,7 @@ export default function HistoryVideos() {
     <div className="min-h-screen">
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
                 <svg
@@ -447,38 +458,11 @@ export default function HistoryVideos() {
                 Video History
               </h1>
             </div>
-            
-            {/* ช่องค้นหา */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg
-                  className="w-4 h-4 text-slate-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-              <input
-                type="text"
-                placeholder="ค้นหาชื่อวิดีโอ..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-64 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm bg-white/70 backdrop-blur-sm"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg
-                    className="w-4 h-4 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="w-4 h-4 text-slate-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -487,25 +471,169 @@ export default function HistoryVideos() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                     />
                   </svg>
-                </button>
-              )}
+                </div>
+                <input
+                  type="text"
+                  placeholder="ค้นหาชื่อไฟล์หรือ ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-10 py-2 w-64 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm bg-white/70 backdrop-blur-sm"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <svg
+                      className="w-4 h-4 text-slate-400 hover:text-slate-600 transition-colors"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => setShowFilterModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                <FunnelIcon className="w-5 h-5" />
+              </button>
             </div>
           </div>
-          <div className="flex items-center justify-between">
-            <p className="text-slate-600 ml-13">Track your video processing journey</p>
-            {searchTerm && (
+          {(searchTerm || dateFrom || dateTo || statusFilter !== "all") && (
+            <div className="flex items-center justify-between">
+              <p className="text-slate-600 ml-13">Track your video processing journey</p>
               <p className="text-sm text-slate-500">
                 แสดง {filteredVideos.length} จาก {videos.length} วิดีโอ
               </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* <div className="grid gap-6"> */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Filter Modal */}
+        {showFilterModal && (
+          <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4 animate-fadeIn">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+              <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-6 rounded-t-2xl">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <FunnelIcon className="w-6 h-6" />
+                    <h2 className="text-xl font-bold">ตัวกรองวิดีโอ</h2>
+                  </div>
+                  <button
+                    onClick={() => setShowFilterModal(false)}
+                    className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                  >
+                    <XMarkIcon className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    จากวันที่
+                  </label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    ถึงวันที่
+                  </label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    สถานะ
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    <button
+                      onClick={() => setStatusFilter("all")}
+                      className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                        statusFilter === "all"
+                          ? "bg-indigo-600 text-white shadow-md"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      ทั้งหมด
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter("completed")}
+                      className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                        statusFilter === "completed"
+                          ? "bg-emerald-600 text-white shadow-md"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      สำเร็จ
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter("running")}
+                      className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                        statusFilter === "running"
+                          ? "bg-amber-600 text-white shadow-md"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      กำลังดำเนินการ
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter("error")}
+                      className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                        statusFilter === "error"
+                          ? "bg-rose-600 text-white shadow-md"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      ผิดพลาด
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 bg-gray-50 rounded-b-2xl flex gap-3">
+                <button
+                  onClick={() => {
+                    setDateFrom("");
+                    setDateTo("");
+                    setStatusFilter("all");
+                    setShowFilterModal(false);
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  ล้างตัวกรอง
+                </button>
+                <button
+                  onClick={() => setShowFilterModal(false)}
+                  className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm"
+                >
+                  ใช้ตัวกรอง
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {filteredVideos.map((video, index) => {
             const videoId = video._id.$oid;
             return (
@@ -534,7 +662,6 @@ export default function HistoryVideos() {
                           />
                         </svg>
                         {video.createdAt ? formatDateTime(parseDate(video.createdAt)) : "Unknown date"}
-                        {/* Uploaded {formatDateTime(parseDate(video.createdAt))} */}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2">
@@ -619,10 +746,7 @@ export default function HistoryVideos() {
                     </div>
                   )}
 
-                  <GeneratedClips
-                    video={video}
-                    openModal={openModal}
-                  />
+                  <GeneratedClips video={video} openModal={openModal} />
                   <FinalVideo video={video} />
                 </div>
               </div>
@@ -630,7 +754,6 @@ export default function HistoryVideos() {
           })}
         </div>
 
-        {/* แสดงข้อความเมื่อไม่พบผลลัพธ์ */}
         {searchTerm && filteredVideos.length === 0 && (
           <div className="text-center py-12">
             <div className="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -768,8 +891,7 @@ export default function HistoryVideos() {
                         <iframe
                           src={promptUrl}
                           className="w-full rounded border bg-white text-sm overflow-hidden"
-                          style={{ 
-                            height: "100px"}}
+                          style={{ height: "100px" }}
                           title="Prompt content"
                         />
                       </div>

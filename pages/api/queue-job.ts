@@ -1,4 +1,3 @@
-// pages/api/queue-job.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
@@ -25,7 +24,6 @@ export default async function handler(
     const client = await clientPromise;
     const db = client.db('login-form-app');
     const listFileCollection = db.collection('listfile');
-    // const usersCollection = db.collection('users'); // เพิ่มการเชื่อมต่อ Users Collection
     const userTokensCollection = db.collection('user_tokens');
 
     // 1. ตรวจสอบว่าไฟล์มีอยู่จริง
@@ -36,13 +34,20 @@ export default async function handler(
 
     // 2. นับจำนวนคลิปที่ต้องสร้างจากโครงสร้างโฟลเดอร์
     let requiredTokens = 0;
-    if (existingFile.folders?.subfolders?.[0]?.subfolders) {
-      requiredTokens = existingFile.folders.subfolders[0].subfolders.length;
+    const subfolders = existingFile.folders?.subfolders || [];
+    if (subfolders.length > 0) {
+      // ถ้ามี wrapper (subfolders[0] มี subfolders)
+      if (subfolders[0]?.subfolders && Array.isArray(subfolders[0].subfolders)) {
+        requiredTokens = subfolders[0].subfolders.length;
+      } else {
+        // ไม่มี wrapper นับจาก subfolders โดยตรง
+        requiredTokens = subfolders.length;
+      }
     }
-    
+
     // หากไม่พบโฟลเดอร์ย่อยที่จำเป็น ก็สามารถส่ง error ได้
     if (requiredTokens === 0) {
-      return (res as any).status(400).json({ error: 'No clips found to process in the file structure.' });
+      return (res as any).status(400).json({ error: 'No content found for processing. Please check the folder structure.' });
     }
 
     // 3. ตรวจสอบ Token ของผู้ใช้
@@ -52,25 +57,26 @@ export default async function handler(
     }
 
     if (user.tokens < requiredTokens) {
-      // ส่ง status 402 เพื่อระบุว่าต้องจ่ายเงิน (Payment Required)
       return (res as any).status(402).json({ 
         error: 'Insufficient tokens', 
-        message: `คุณมี Token ไม่พอสำหรับการสร้างวิดีโอ ต้องใช้ ${requiredTokens} Token แต่คุณมีแค่ ${user.tokens} Token` 
+        message: `คุณมี Token ไม่พอสำหรับการสร้างวิดีโอ ต้องใช้ 
+        ${requiredTokens} Token แต่คุณมีแค่ 
+        ${user.tokens} Token` 
       });
     }
 
     // ตรวจสอบว่า job นี้ไม่ได้อยู่ในระบบแล้ว
-const existingJob = await listFileCollection.findOne({ 
-  _id: new ObjectId(fileId),
-  status: { $in: ['queued', 'running', 'starting'] }
-});
+    const existingJob = await listFileCollection.findOne({ 
+      _id: new ObjectId(fileId),
+      status: { $in: ['queued', 'running', 'starting'] }
+    });
 
-if (existingJob) {
-  return (res as any).status(409).json({ 
-    error: 'Job already in progress',
-    message: 'งานนี้อยู่ในระบบแล้ว'
-  });
-}
+    if (existingJob) {
+      return (res as any).status(409).json({ 
+        error: 'Job already in progress',
+        message: 'งานนี้อยู่ในระบบแล้ว'
+      });
+    }
 
     // 4. ถ้า Token พอ ก็ดำเนินการตามโค้ดเดิม
     // หา queue position ล่าสุด
@@ -92,7 +98,6 @@ if (existingJob) {
           updatedAt: now
         },
         $unset: {
-          // executionId: '',
           startTime: '',
           error: '',
           executionIdHistory: ''
