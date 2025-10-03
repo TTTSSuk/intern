@@ -62,12 +62,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <aside
         className="w-64 bg-white shadow-md p-6 flex flex-col fixed top-0 left-0 h-screen overflow-auto"
       >
-        <h1
-          className="text-3xl font-bold text-blue-800 mb-8 cursor-pointer"
-          onClick={() => router.push("/admin/dashboard")}
-        >
-          LOGO
-        </h1>
+        <img
+  src="/images/logo.png"
+  alt="MediaFlux Logo"
+  className="h-45 sm:h-14 md:h-45 w-auto object-contain"
+/>
         <nav className="flex flex-col space-y-3 flex-1">
           <button
             onClick={() => router.push("/admin/dashboard")}

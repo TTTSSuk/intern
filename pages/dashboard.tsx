@@ -12,11 +12,11 @@ import {
   CheckCircle,
   Clock
 } from 'lucide-react'
-// import { Play } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, Navigation } from "swiper/modules";
+import { Navigation, Autoplay, EffectCards } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
+import "swiper/css/effect-cards";
 
 
 const BASE_VIDEO_URL = "http://192.168.70.166:8080"
@@ -255,7 +255,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {finalVideos.length > 0 && (
+          {finalVideos.length > 0 && (
 <div 
     ref={videoSectionRef} 
     className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-200 p-8 mb-6"
@@ -356,6 +356,7 @@ export default function Dashboard() {
     </div>
   </div>
 )}
+
 
         {finalVideos.length === 0 && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center mb-6">

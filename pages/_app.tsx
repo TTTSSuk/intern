@@ -4,7 +4,7 @@ import Layout from '../components/Layouts/Layout'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import '../styles/globals.css'
-import { StepProvider } from '@/context/StepContext' // Context สำหรับ StepProgress
+import { StepProvider } from '@/context/StepContext'
 
 interface UserProfile {
   userId: string
@@ -40,8 +40,9 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     return <div className="flex items-center justify-center h-screen">กำลังโหลดข้อมูลผู้ใช้...</div>
   }
 
-  // หน้า /login หรือ /admin ไม่ใช้ Layout
+  // หน้า /, /login หรือ /admin ไม่ใช้ Layout
   if (
+    router.pathname === '/' ||
     router.pathname === '/login' ||
     router.pathname.startsWith('/admin')
   ) {
