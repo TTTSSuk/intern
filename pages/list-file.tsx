@@ -34,7 +34,7 @@ export default function ListFile() {
   const [error, setError] = useState<string | null>(null);
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
-  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  // const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const steps = ['อัปโหลดไฟล์', 'รายการไฟล์', 'สร้างวิดีโอ'];
   const { currentStep, setCurrentStep } = useStep();
   
@@ -53,59 +53,59 @@ export default function ListFile() {
   }
 
   // ฟังก์ชันตรวจสอบโครงสร้างโฟลเดอร์
-  function validateFolderStructure(folders?: Folder[]): ValidationError[] {
-    const errors: ValidationError[] = [];
+  // function validateFolderStructure(folders?: Folder[]): ValidationError[] {
+  //   const errors: ValidationError[] = [];
     
-    if (!folders || folders.length === 0) {
-      return errors;
-    }
+  //   if (!folders || folders.length === 0) {
+  //     return errors;
+  //   }
 
-    // ตรวจสอบ subfolders ทั้งหมด
-    folders.forEach(folder => {
-      if (folder.subfolders && folder.subfolders.length > 0) {
-        folder.subfolders.forEach(subfolder => {
-          const folderErrors: string[] = [];
+  //   // ตรวจสอบ subfolders ทั้งหมด
+  //   folders.forEach(folder => {
+  //     if (folder.subfolders && folder.subfolders.length > 0) {
+  //       folder.subfolders.forEach(subfolder => {
+  //         const folderErrors: string[] = [];
           
-          // ตรวจสอบว่ามีไฟล์หรือไม่
-          if (!subfolder.files || subfolder.files.length === 0) {
-            folderErrors.push('ไม่มีไฟล์ในโฟลเดอร์');
-          } else {
-            const files = subfolder.files.map(f => f.toLowerCase());
+  //         // ตรวจสอบว่ามีไฟล์หรือไม่
+  //         if (!subfolder.files || subfolder.files.length === 0) {
+  //           folderErrors.push('ไม่มีไฟล์ในโฟลเดอร์');
+  //         } else {
+  //           const files = subfolder.files.map(f => f.toLowerCase());
             
-            // ตรวจสอบว่ามี prompt.txt
-            const hasPrompt = files.includes('prompt.txt');
-            if (!hasPrompt) {
-              folderErrors.push('ไม่พบไฟล์ prompt.txt');
-            }
+  //           // ตรวจสอบว่ามี prompt.txt
+  //           const hasPrompt = files.includes('prompt.txt');
+  //           if (!hasPrompt) {
+  //             folderErrors.push('ไม่พบไฟล์ prompt.txt');
+  //           }
             
-            // ตรวจสอบว่ามี voice.txt
-            const hasVoice = files.includes('voice.txt');
-            if (!hasVoice) {
-              folderErrors.push('ไม่พบไฟล์ voice.txt');
-            }
+  //           // ตรวจสอบว่ามี voice.txt
+  //           const hasVoice = files.includes('voice.txt');
+  //           if (!hasVoice) {
+  //             folderErrors.push('ไม่พบไฟล์ voice.txt');
+  //           }
             
-            // ตรวจสอบว่ามีไฟล์รูปภาพ
-            const imageExtensions = ['.png', '.jpg', '.jpeg'];
-            const hasImage = files.some(file => 
-              imageExtensions.some(ext => file.endsWith(ext))
-            );
-            if (!hasImage) {
-              folderErrors.push('ไม่พบไฟล์รูปภาพ (.png, .jpg, .jpeg)');
-            }
-          }
+  //           // ตรวจสอบว่ามีไฟล์รูปภาพ
+  //           const imageExtensions = ['.png', '.jpg', '.jpeg'];
+  //           const hasImage = files.some(file => 
+  //             imageExtensions.some(ext => file.endsWith(ext))
+  //           );
+  //           if (!hasImage) {
+  //             folderErrors.push('ไม่พบไฟล์รูปภาพ (.png, .jpg, .jpeg)');
+  //           }
+  //         }
           
-          if (folderErrors.length > 0) {
-            errors.push({
-              folderName: subfolder.name,
-              errors: folderErrors
-            });
-          }
-        });
-      }
-    });
+  //         if (folderErrors.length > 0) {
+  //           errors.push({
+  //             folderName: subfolder.name,
+  //             errors: folderErrors
+  //           });
+  //         }
+  //       });
+  //     }
+  //   });
     
-    return errors;
-  }
+  //   return errors;
+  // }
 
   // ฟังก์ชันจัดการเมื่อกด Next
   const handleNext = () => {
@@ -121,12 +121,12 @@ export default function ListFile() {
     }
 
     // ตรวจสอบโครงสร้างโฟลเดอร์
-    const errors = validateFolderStructure(selectedFile.folders);
+    // const errors = validateFolderStructure(selectedFile.folders);
     
-    if (errors.length > 0) {
-      setValidationErrors(errors);
-      return;
-    }
+    // if (errors.length > 0) {
+    //   setValidationErrors(errors);
+    //   return;
+    // }
 
     // ถ้าไม่มี error ให้ไปหน้า create-video
     setCurrentStep(3);
@@ -288,65 +288,6 @@ export default function ListFile() {
       </div>
 
       <div className="max-w-6xl mx-auto">
-        {/* Validation Errors Popup */}
-        {validationErrors.length > 0 && (
-          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 p-4">
-    <div className="bg-white border-2 border-red-200 rounded-2xl p-6 max-w-lg w-full max-h-[70vh] shadow-2xl animate-fade-in flex flex-col">
-      {/* Header */}
-      <div className="flex items-center space-x-4 mb-4">
-        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-2xl">⚠️</span>
-        </div>
-        <div>
-          <h3 className="font-semibold text-red-800 text-lg">เกิดข้อผิดพลาด</h3>
-          <p className="text-red-600 text-sm mt-1">
-            กรุณาแก้ไขโฟลเดอร์ให้ถูกต้องก่อนสร้างวิดีโอ
-          </p>
-        </div>
-      </div>
-      
-      {/* Correct Structure Info */}
-      <div className="bg-blue-50 border-l-2 border-blue-400 p-3 rounded mb-4">
-        <p className="text-xs font-semibold text-blue-800 mb-1">
-          โครงสร้างที่ถูกต้องต่อ 1 โฟลเดอร์:
-        </p>
-        <ul className="text-xs text-blue-700 space-y-0.5 ml-3">
-          <li>- ต้องมีไฟล์ <code className="bg-blue-100 px-1 rounded">prompt.txt</code></li>
-          <li>- ต้องมีไฟล์ <code className="bg-blue-100 px-1 rounded">voice.txt</code></li>
-          <li>- ต้องมีไฟล์รูปภาพ <code className="bg-blue-100 px-1 rounded">(.png, .jpg, .jpeg)</code></li>
-        </ul>
-      </div>
-      
-      {/* Validation Errors - with Tailwind scrollbar */}
-      <div className="bg-red-50 rounded-lg p-3 overflow-y-auto max-h-48 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-red-100 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-400 hover:[&::-webkit-scrollbar-thumb]:bg-red-500">
-        <h3 className="font-semibold text-red-800 mb-2">พบข้อผิดพลาดในโฟลเดอร์:</h3>
-        <div className="space-y-2">
-          {validationErrors.map((error, index) => (
-            <div key={index} className="bg-white rounded-lg p-2 border border-red-200">
-              <p className="font-medium text-slate-800 mb-0">
-                <strong>folder</strong>: {error.folderName}{" "}
-                <span className="text-red-600 text-xs">
-                  {error.errors.join(", ")}
-                </span>
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-      
-      {/* Close Button */}
-      <div className="mt-6 flex justify-end">
-        <button
-          onClick={() => setValidationErrors([])}
-          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium"
-        >
-          ปิด
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
           {/* Files Grid */}
           <div className="space-y-6">
             {files.map((file) => (

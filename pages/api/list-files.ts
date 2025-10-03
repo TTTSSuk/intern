@@ -1,5 +1,4 @@
 //pages/api/list-files.ts
-//pages/api/list-files.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import path from 'path';

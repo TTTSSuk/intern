@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation"
 import { useStep } from "@/context/StepContext"
 import { UploadCloud, Info, FileQuestion } from "lucide-react"
 
+interface ValidationError {
+  folderName: string;
+  errors: string[];
+}
+
 export default function UploadZip() {
   const { currentStep, setCurrentStep } = useStep()
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -15,6 +20,9 @@ export default function UploadZip() {
   // สำหรับ popup
   const [showPopup, setShowPopup] = useState(false)
   const [popupView, setPopupView] = useState<'tips' | 'structure'>('tips')
+
+  // สำหรับ validation errors
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -36,6 +44,7 @@ export default function UploadZip() {
     }
     setSelectedFile(file)
     setMessage("")
+    setValidationErrors([]) // Clear previous errors
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,6 +68,8 @@ export default function UploadZip() {
     if (!selectedFile) return setMessage("กรุณาเลือกไฟล์ ZIP ก่อน")
 
     setUploading(true)
+    setValidationErrors([]) // Clear previous errors
+    
     const formData = new FormData()
     formData.append("zipfile", selectedFile)
 
@@ -68,6 +79,14 @@ export default function UploadZip() {
     try {
       const res = await fetch("/api/upload-zip", { method: "POST", body: formData })
       const data = await res.json()
+      
+      // ถ้า status 400 แสดงว่ามี validation errors
+      if (res.status === 400 && data.validationErrors) {
+        setValidationErrors(data.validationErrors)
+        setMessage(`❌ ${data.message}`)
+        return
+      }
+      
       if (!res.ok) throw new Error(data.message || "อัปโหลดล้มเหลว")
 
       setMessage(`✅ สำเร็จ: ${data.message}`)
@@ -95,22 +114,17 @@ export default function UploadZip() {
   }
 
   return (
-  <div className="min-h-screen">
-    <div className="container mx-auto px-4 py-6">
-      <StepProgress 
-        steps={steps} 
-        currentStep={currentStep} 
-        canGoNext={false} 
-        showHomeButton={true} 
-      />
-      
-      {/* Header */}
-      <div className="text-center my-6">
-        <p className="text-2xl text-gray-800 font-bold">อัปโหลดไฟล์ ZIP เพื่อสร้างวิดีโอ</p>
-      </div>
+    <div className="min-h-screen">
+      <div className="container mx-auto px-4 py-6">
+        <StepProgress steps={steps} currentStep={currentStep} canGoNext={false} showHomeButton={true} />
 
-      <div className="max-w-5xl mx-auto">
-        <div className="grid lg:grid-cols-2 gap-4">
+        {/* Header */}
+        <div className="text-center my-6">
+          <p className="text-2xl text-gray-800 font-bold">อัปโหลดไฟล์ ZIP เพื่อสร้างวิดีโอ</p>
+        </div>
+
+        <div className="max-w-5xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-4">
             {/* Left Side - Compact Info */}
             <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl border border-gray-100 p-4">
               
@@ -174,7 +188,7 @@ export default function UploadZip() {
                   </div>
                 </div>
               </div>
-              </div>
+            </div>
 
             {/* Right Side - Upload Area */}
             <div className="space-y-4 flex flex-col">
@@ -211,6 +225,7 @@ export default function UploadZip() {
                           e.stopPropagation()
                           setSelectedFile(null)
                           setMessage("")
+                          setValidationErrors([])
                         }}
                         className="p-2 hover:bg-red-100 rounded-full transition-colors"
                       >
@@ -259,7 +274,7 @@ export default function UploadZip() {
         </div>
       </div>
 
-      {/* Popup */}
+      {/* Tips/Structure Popup */}
       {showPopup && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 p-4"
@@ -387,6 +402,70 @@ export default function UploadZip() {
               <button
                 onClick={() => setShowPopup(false)}
                 className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors duration-200 font-medium"
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Validation Errors Popup */}
+      {validationErrors.length > 0 && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 p-4">
+          <div className="bg-white border-2 border-red-200 rounded-2xl p-6 max-w-lg w-full max-h-[70vh] shadow-2xl flex flex-col">
+            {/* Header */}
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-2xl">⚠️</span>
+              </div>
+              <div>
+                <h3 className="font-semibold text-red-800 text-lg">เกิดข้อผิดพลาด</h3>
+                <p className="text-red-600 text-sm mt-1">
+                  กรุณาแก้ไขโฟลเดอร์ให้ถูกต้องก่อนอัปโหลดใหม่
+                </p>
+              </div>
+            </div>
+            
+            {/* Correct Structure Info */}
+            <div className="bg-blue-50 border-l-2 border-blue-400 p-3 rounded mb-4">
+              <p className="text-xs font-semibold text-blue-800 mb-1">
+                โครงสร้างที่ถูกต้องต่อ 1 โฟลเดอร์:
+              </p>
+              <ul className="text-xs text-blue-700 space-y-0.5 ml-3">
+                <li>- ต้องมีไฟล์ <code className="bg-blue-100 px-1 rounded">prompt.txt</code></li>
+                <li>- ต้องมีไฟล์ <code className="bg-blue-100 px-1 rounded">voice.txt</code></li>
+                <li>- ต้องมีไฟล์รูปภาพ <code className="bg-blue-100 px-1 rounded">(.png, .jpg, .jpeg)</code></li>
+              </ul>
+            </div>
+            
+            {/* Validation Errors - with Tailwind scrollbar */}
+            <div className="bg-red-50 rounded-lg p-3 overflow-y-auto max-h-48 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-red-100 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-400 hover:[&::-webkit-scrollbar-thumb]:bg-red-500">
+              <h3 className="font-semibold text-red-800 mb-2">พบข้อผิดพลาดในโฟลเดอร์:</h3>
+              <div className="space-y-2">
+                {validationErrors.map((error, index) => (
+                  <div key={index} className="bg-white rounded-lg p-2 border border-red-200">
+                    <p className="font-medium text-slate-800 mb-0">
+                      <strong>📁 {error.folderName}</strong>
+                    </p>
+                    <ul className="text-xs text-red-600 mt-1 ml-4 space-y-0.5">
+                      {error.errors.map((err, idx) => (
+                        <li key={idx}>• {err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Close Button */}
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => {
+                  setValidationErrors([])
+                  setMessage("")
+                }}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium"
               >
                 ปิด
               </button>
