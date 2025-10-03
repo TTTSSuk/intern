@@ -18,14 +18,14 @@ export default function StepProgress({
   onNext,
   onPreview,
   onMyVideos,
-  showHomeButton = false, // default false
+  showHomeButton = false,
 }: StepProgressProps) {
   const router = useRouter();
 
   return (
-    <div className="mb-8 relative w-full">
+    <div className="mb-6 relative w-full">
       {/* Connection Lines */}
-      <div className="absolute top-5 left-0 right-0 flex items-center px-5">
+      <div className="absolute top-4 left-0 right-0 flex items-center px-5">
         {steps.slice(0, -1).map((_, index) => (
           <div
             key={index}
@@ -43,7 +43,7 @@ export default function StepProgress({
           return (
             <div key={step} className="flex flex-col items-center">
               <div
-                className={`w-10 h-10 flex items-center justify-center rounded-full border-2 font-semibold ${
+                className={`w-8 h-8 flex items-center justify-center rounded-full border-2 font-semibold text-sm ${
                   isCompleted
                     ? 'bg-green-500 border-green-500 text-white'
                     : isActive
@@ -54,7 +54,7 @@ export default function StepProgress({
                 {isCompleted ? '✓' : stepNumber}
               </div>
               <p
-                className={`text-center mt-2 text-sm max-w-20 ${
+                className={`text-center mt-1.5 text-xs max-w-20 ${
                   isActive ? 'font-bold text-blue-500' : 'text-gray-500'
                 }`}
               >
@@ -67,10 +67,10 @@ export default function StepProgress({
 
       {/* ปุ่ม Home สำหรับหน้าเฉพาะ */}
       {showHomeButton && (
-        <div className="absolute left-0 top-full mt-4">
+        <div className="absolute left-0 top-full mt-3">
           <button
             onClick={() => router.push('/dashboard')}
-            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            className="px-3 py-1.5 text-sm bg-gray-200 rounded hover:bg-gray-300"
           >
             Home
           </button>
@@ -78,14 +78,13 @@ export default function StepProgress({
       )}
 
       {/* ปุ่ม Preview / Next */}
-      <div className="flex justify-between mt-4">
+      <div className="flex justify-between mt-3">
         {onPreview ? (
           <button
             onClick={onPreview}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center space-x-2"
+            className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
           >
-            {/* <span>👁️</span> */}
-            <span>Preview</span>
+            Preview
           </button>
         ) : (
           <div></div>
@@ -94,22 +93,20 @@ export default function StepProgress({
         {canGoNext && onNext && (
           <button
             onClick={onNext}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 font-medium"
+            className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
-            <span>Next</span>
-            {/* <span>→</span> */}
+            Next
           </button>
         )}
 
-         {/* My Videos Button */}
-    {onMyVideos && (
-      <button
-        onClick={onMyVideos}
-        className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors flex items-center space-x-2 font-medium"
-      >
-        <span>วิดีโอของฉัน</span>
-      </button>
-    )}
+        {onMyVideos && (
+          <button
+            onClick={onMyVideos}
+            className="px-3 py-1.5 text-sm bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors font-medium"
+          >
+            วิดีโอของฉัน
+          </button>
+        )}
       </div>
     </div>
   );

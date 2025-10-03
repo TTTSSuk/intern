@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useStep } from '@/context/StepContext';
 import StepProgress from '@/components/Layouts/StepProgress';
+import EnhancedFileCard from '@/components/EnhancedFileCard';
 
 interface VideoCreationStatus {
   _id: string;
@@ -21,11 +22,12 @@ interface Clip {
 
 const BASE_VIDEO_URL = 'http://192.168.70.166:8080/';
 
+
 export default function CreateVideo() {
   const router = useRouter();
   const idParam = router.query.id;
   const id = Array.isArray(idParam) ? idParam[0] : idParam;
-
+  const [isVideoStarted, setIsVideoStarted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<VideoCreationStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -274,45 +276,93 @@ export default function CreateVideo() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <StepProgress
-        steps={['อัปโหลดไฟล์', 'รายการไฟล์', 'สร้างวิดีโอ']}
-        currentStep={3}
-        canGoNext={true}
-        onNext={() => {}}
-        onPreview={() => router.push('/list-file')}
-        onMyVideos={() => router.push('/my-videos')}
-      />
+    <div className="min-h-screen">
+  <div className="container mx-auto px-4 py-6">
+    <StepProgress
+      steps={['อัปโหลดไฟล์', 'รายการไฟล์', 'สร้างวิดีโอ']}
+      currentStep={3}
+      canGoNext={false}
+      onNext={() => {}}
+      onPreview={() => router.push('/list-file')}
+      onMyVideos={() => router.push('/my-videos')}
+    />
+    
+    {!status && !error && <p>กำลังโหลดสถานะ...</p>}
+    
+    {/* Header */}
+    <div className="text-center my-6">
+      <p className="text-2xl text-gray-800 font-bold">สร้างวิดีโอ</p>
+    </div>
 
-      {!status && !error && <p>กำลังโหลดสถานะ...</p>}
 
-      <div className="min-h-screen">
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-800 mb-3">
-              สร้างวิดีโอ
-            </h1>
-          </div>
-
+    <div className="container mx-auto px-4 max-w-6xl">
           {/* File ID Card */}
-          {id && (
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-200">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-xl">📄</span>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800">ไฟล์ที่เลือก</h3>
-                  <p className="text-gray-600 font-mono text-sm bg-gray-100 px-3 py-1 rounded-md inline-block">
-                    {id}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          {id && <EnhancedFileCard fileId={id} />}
 
-          {/* Status Card */}
+          {/* Status + Queue Card */}
+{status && isVideoStarted && ( // isVideoStarted = state ที่ set เมื่อ user กดเริ่ม
+  <div className={`rounded-xl shadow-lg p-6 mb-6 border-2 ${getStatusColor(status.status)}`}>
+    
+    {/* Header */}
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-xl font-bold flex items-center space-x-3">
+        {getStatusIcon(status.status)}
+        <span>สถานะการทำงาน</span>
+      </h3>
+      {(status.status === 'running' || status.status === 'queued') && (
+        <div className="flex space-x-1">
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+        </div>
+      )}
+    </div>
+
+    {/* Main Info Grid */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div className="bg-white/70 rounded-lg p-4">
+        <p className="text-sm text-gray-500 mb-1">สถานะปัจจุบัน</p>
+        <p className="font-bold text-lg">{getStatusText(status.status)}</p>
+      </div>
+
+      {status.queuePosition && (
+        <div className="bg-white/70 rounded-lg p-4">
+          <p className="text-sm text-gray-500 mb-1">ลำดับในคิว</p>
+          <p className="font-bold text-lg">#{status.queuePosition}</p>
+        </div>
+      )}
+
+      {status.executionId && status.status !== 'queued' && (
+        <div className="bg-white/70 rounded-lg p-4">
+          <p className="text-sm text-gray-500 mb-1">Execution ID</p>
+          <p className="font-mono text-sm truncate">{status.executionId}</p>
+        </div>
+      )}
+
+      <div className="bg-white/70 rounded-lg p-4">
+        <p className="text-sm text-gray-500 mb-1">อัพเดทล่าสุด</p>
+        <p className="text-sm">{status?.updatedAt ? formatDateTime(new Date(status.updatedAt)) : ''}</p>
+      </div>
+    </div>
+
+    {/* Queue Info Inline */}
+    {status.status === 'queued' && status.queuePosition && (
+      <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 flex items-center gap-3">
+        <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
+          <span className="text-white text-xl">⏳</span>
+        </div>
+        <div>
+          <h4 className="font-bold text-yellow-800 mb-1">งานของคุณอยู่ในคิว</h4>
+          <p className="text-yellow-700 text-sm">
+            ลำดับที่ {status.queuePosition} - ระบบจะเริ่มดำเนินการโดยอัตโนมัติเมื่อถึงลำดับ
+          </p>
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
+          {/* Status Card
           {status && (
             <div className={`rounded-xl shadow-lg p-6 mb-6 border-2 ${getStatusColor(status.status)}`}>
               <div className="flex items-center justify-between mb-4">
@@ -357,7 +407,7 @@ export default function CreateVideo() {
             </div>
           )}
 
-          {/* Queue Info */}
+          Queue Info
           {status?.status === 'queued' && status.queuePosition && (
             <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-6 mb-6">
               <div className="flex items-center space-x-3">
@@ -372,7 +422,7 @@ export default function CreateVideo() {
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Error Alert */}
           {error && (
@@ -524,7 +574,11 @@ export default function CreateVideo() {
                   ? 'bg-gray-400 text-gray-500 cursor-not-allowed shadow-none transform-none'
                   : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
               }`}
-              onClick={startVideoCreation}
+              // onClick={startVideoCreation}
+               onClick={() => {
+    setIsVideoStarted(true); // 🔥 เพิ่มตรงนี้
+    startVideoCreation();    // เรียก API เริ่มสร้างวิดีโอ
+  }}
             >
               {loading ? (
                 <>

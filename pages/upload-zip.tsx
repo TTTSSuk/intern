@@ -95,18 +95,21 @@ export default function UploadZip() {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="container mx-auto px-4 py-6">
-        <StepProgress steps={steps} currentStep={currentStep} canGoNext={false} showHomeButton={true} />
+  <div className="min-h-screen">
+    <div className="container mx-auto px-4 py-6">
+      <StepProgress 
+        steps={steps} 
+        currentStep={currentStep} 
+        canGoNext={false} 
+        showHomeButton={true} 
+      />
+      
+      {/* Header */}
+      <div className="text-center my-6">
+        <p className="text-2xl text-gray-800 font-bold">อัปโหลดไฟล์ ZIP เพื่อสร้างวิดีโอ</p>
+      </div>
 
-        {/* Header */}
-        <div className="text-center my-6">
-          <p className="text-2xl text-gray-800 font-bold">อัปโหลดไฟล์ ZIP เพื่อสร้างวิดีโอ</p>
-        </div>
-
-        {/* <div className="max-w-7xl mx-auto"> */}
-        <div className="max-w-5xl mx-auto">
-          {/* <div className="grid lg:grid-cols-2 gap-6"> */}
+      <div className="max-w-5xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-4">
             {/* Left Side - Compact Info */}
             <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl border border-gray-100 p-4">

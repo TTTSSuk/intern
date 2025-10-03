@@ -1,4 +1,3 @@
-// //pages/api/status-wf.ts - Fixed Version
 //pages/api/status-wf.ts - With Token Cleanup
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
@@ -56,7 +55,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         finished: false, 
         message: `Job is ${doc.status || 'queued'}`,
         queuePosition: doc.queuePosition,
-        clips: doc.clips || []
+        clips: doc.clips || [],
+        originalName: doc.originalName,        // 🔥 เพิ่ม
+        tokensReserved: doc.tokensReserved,    // 🔥 เพิ่ม
+        createdAt: doc.createdAt,              // 🔥 เพิ่ม
+        folders: doc.folders  
       });
     }
 
@@ -67,7 +70,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         executionId: execId,
         documentId,
         clips: doc.clips || [],
-        folders: doc.folders || []
+        folders: doc.folders || [],
+        originalName: doc.originalName,        // 🔥 เพิ่ม
+        tokensReserved: doc.tokensReserved,    // 🔥 เพิ่ม
+        createdAt: doc.createdAt  
       });
     }
 
@@ -192,7 +198,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       finished, 
       ...(documentId && { documentId }),
       clips: clipsFromN8N || doc.clips || [],
-      folders: foldersFromN8N || doc.folders || []
+      folders: foldersFromN8N || doc.folders || [],
+      originalName: doc.originalName,        // 🔥 เพิ่ม
+      tokensReserved: doc.tokensReserved,    // 🔥 เพิ่ม
+      createdAt: doc.createdAt 
     });
     
   } catch (error) {

@@ -272,7 +272,8 @@ export default function ListFile() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+  <div className="min-h-screen"> 
+    <div className="container mx-auto px-4 py-6">
       <StepProgress 
         steps={steps} 
         currentStep={currentStep}
@@ -280,20 +281,16 @@ export default function ListFile() {
         onPreview={() => router.push('/upload-zip')}
         onNext={handleNext}
       />
+      
+      {/* Header */}
+      <div className="text-center my-6">
+        <p className="text-2xl text-gray-800 font-bold">รายการไฟล์</p>
+      </div>
 
-      <div className="min-h-screen">
-        <div className="container mx-auto px-4 py-8">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-slate-800 mb-2">ไฟล์ที่แตกแล้ว</h1>
-            <p className="text-slate-600">จัดการไฟล์ ZIP ที่แตกแล้วของคุณ</p>
-          </div>
-          
-{validationErrors.length > 0 && (
-  <div
-    className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 p-4"
-    style={{ overflow: 'hidden' }}
-  >
+      <div className="max-w-6xl mx-auto">
+        {/* Validation Errors Popup */}
+        {validationErrors.length > 0 && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 p-4">
     <div className="bg-white border-2 border-red-200 rounded-2xl p-6 max-w-lg w-full max-h-[70vh] shadow-2xl animate-fade-in flex flex-col">
       {/* Header */}
       <div className="flex items-center space-x-4 mb-4">
@@ -350,7 +347,6 @@ export default function ListFile() {
   </div>
 )}
 
-
           {/* Files Grid */}
           <div className="space-y-6">
             {files.map((file) => (
@@ -376,6 +372,7 @@ export default function ListFile() {
                           />
                         </div>
                       )}
+
                       {/* File Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-3 mb-2">
@@ -412,6 +409,7 @@ export default function ListFile() {
                       </button>
                     </div>
                   </div>
+
                   {/* File Structure */}
                   <div className="bg-slate-50 rounded-xl p-4">
                     <h4 className="font-semibold text-slate-700 mb-3 flex items-center justify-between space-x-2">
