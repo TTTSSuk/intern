@@ -81,7 +81,7 @@ await listFileCollection.updateOne(
   { _id: new ObjectId(fileId) },
   { 
     $set: { 
-      status: 'idle',
+      status: 'done',
       updatedAt: new Date()
     },
     $unset: {
