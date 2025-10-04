@@ -298,6 +298,22 @@ export default function HistoryVideos() {
     video: HistoryVideo;
   } | null>(null);
 
+  // const [expandedVideos, setExpandedVideos] = useState<Set<string>>(new Set());
+
+// เพิ่ม state สำหรับ video detail modal
+const [selectedVideo, setSelectedVideo] = useState<HistoryVideo | null>(null);
+
+// แทนที่ toggleVideoExpand
+const openVideoDetail = (video: HistoryVideo) => {
+  setSelectedVideo(video);
+  document.body.style.overflow = "hidden";
+};
+
+const closeVideoDetail = () => {
+  setSelectedVideo(null);
+  document.body.style.overflow = "unset";
+};
+
   const openModal = (clip: Clip, video: HistoryVideo, index: number) => {
     setSelectedClip({ clip, video, index });
     document.body.style.overflow = "hidden";
@@ -633,126 +649,68 @@ export default function HistoryVideos() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredVideos.map((video, index) => {
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredVideos.map((video) => {
             const videoId = video._id.$oid;
+            const clipCount = video.clips?.filter(c => c.video || c.finalVideo).length || 0;
+            
             return (
               <div
                 key={videoId}
-                className="group bg-white/70 backdrop-blur-sm shadow-lg hover:shadow-xl rounded-2xl border border-white/20 transition-all duration-300 hover:transform hover:scale-[1.02] overflow-hidden"
+                className="group bg-white rounded-xl shadow-sm hover:shadow-md border border-slate-200 transition-all duration-300 overflow-hidden"
               >
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <h2 className="text-xl font-bold text-slate-800 group-hover:text-indigo-600 transition-colors duration-200 mb-2">
+                <div 
+  className="p-4 cursor-pointer"
+  onClick={() => openVideoDetail(video)}
+>
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1 min-w-0 pr-3">
+                      <h2 className="text-base font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors truncate">
                         {video.originalName}
                       </h2>
-                      <div className="flex items-center gap-2 text-sm text-slate-500">
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                        {video.createdAt ? formatDateTime(parseDate(video.createdAt)) : "Unknown date"}
-                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+  {video.createdAt ? formatDateTime(parseDate(video.createdAt)) : "Unknown"}
+</div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span
-                        className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wide ${
-                          video.executionIdHistory?.workflowStatus === "completed"
-                            ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                            : video.executionIdHistory?.workflowStatus === "running"
-                            ? "bg-amber-100 text-amber-700 border border-amber-200"
-                            : video.executionIdHistory?.workflowStatus === "error"
-                            ? "bg-rose-100 text-rose-700 border border-rose-200"
-                            : "bg-gray-100 text-gray-700 border border-gray-200"
-                        }`}
-                      >
-                        {video.executionIdHistory?.workflowStatus || video.status}
-                      </span>
-                    </div>
+                    <svg
+                      className={`w-4 h-4 text-slate-400 transition-transform duration-200 flex-shrink-0 `}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </div>
 
-                  {video.executionIdHistory && (
-                    <div className="mb-6 bg-slate-50/50 rounded-xl p-4 border border-slate-100">
-                      <div className="flex items-center gap-2 mb-3">
-                        <svg
-                          className="w-5 h-5 text-slate-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                          />
-                        </svg>
-                        <h4 className="font-semibold text-slate-700">
-                          Workflow Details
-                        </h4>
-                      </div>
-                      <div className="grid md:grid-cols-2 gap-4 text-sm">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-500 font-medium w-20">
-                              ID:
-                            </span>
-                            <code className="bg-slate-200/50 px-2 py-1 rounded text-xs font-mono">
-                              {video.executionIdHistory.executionId}
-                            </code>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-500 font-medium w-20">
-                              Status:
-                            </span>
-                            <span className="text-slate-700">
-                              {video.executionIdHistory.workflowStatus}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-500 font-medium w-20">
-                              Started:
-                            </span>
-                            <span className="text-slate-700">
-                              {formatDateTime(
-                                parseDate(video.executionIdHistory.startTime)
-                              )}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-500 font-medium w-20">
-                              Ended:
-                            </span>
-                            <span className="text-slate-700">
-                              {formatDateTime(
-                                parseDate(video.executionIdHistory.endTime)
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-sm text-slate-600">{clipCount}</span>
                     </div>
-                  )}
-
-                  <GeneratedClips video={video} openModal={openModal} />
-                  <FinalVideo video={video} />
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        video.executionIdHistory?.workflowStatus === "completed"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : video.executionIdHistory?.workflowStatus === "running"
+                          ? "bg-amber-100 text-amber-700"
+                          : video.executionIdHistory?.workflowStatus === "error"
+                          ? "bg-rose-100 text-rose-700"
+                          : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {video.executionIdHistory?.workflowStatus || video.status}
+                    </span>
+                  </div>
                 </div>
               </div>
             );
           })}
-        </div>
+</div> 
 
         {searchTerm && filteredVideos.length === 0 && (
           <div className="text-center py-12">
@@ -787,9 +745,9 @@ export default function HistoryVideos() {
         )}
 
         {selectedClip && (
-          <div
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 flex items-center justify-center p-4"
-            style={{
+  <div
+    className="fixed inset-0 z-[70] bg-black/10 backdrop-blur-sm animate-in fade-in duration-300 flex items-center justify-center p-4"
+    style={{
               position: "fixed",
               top: 0,
               left: 0,
@@ -852,56 +810,82 @@ export default function HistoryVideos() {
                     );
                   })()}
                 </div>
-                {/* <div>
-                  <h4 className="text-sm font-medium text-slate-700 mb-3">
-                    Prompt
-                  </h4>
-                  {(() => {
-                    const parentFolder = selectedClip.video.originalName.replace(
-                      /\.zip$/i,
-                      ""
-                    );
-                    const subfolders =
-                      selectedClip.video.folders?.subfolders?.[0]?.subfolders ??
-                      [];
-                    const subfolder = subfolders[selectedClip.index];
-                    const txtFile = subfolder?.files?.find((f) =>
-                      f.endsWith(".txt")
-                    );
-                    if (!txtFile) {
-                      return (
-                        <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">
-                          No prompt file available
-                        </p>
-                      );
-                    }
-                    const basePath = selectedClip.video.extractPath.replace(
-                      "./uploads/extracted/",
-                      ""
-                    );
-                    const promptUrl = `${BASE_VIDEO_URL}/${basePath}/${parentFolder}/${subfolder.name}/${txtFile}`;
-                    return (
-                      <div className="bg-slate-50 rounded-lg p-3">
-                        <p className="text-sm text-slate-600 mb-2">
-                          Prompt file:{" "}
-                          <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
-                            {txtFile}
-                          </code>
-                        </p>
-                        <iframe
-                          src={promptUrl}
-                          className="w-full rounded border bg-white text-sm overflow-hidden"
-                          style={{ height: "100px" }}
-                          title="Prompt content"
-                        />
-                      </div>
-                    );
-                  })()}
-                </div> */}
+                
               </div>
             </div>
           </div>
         )}
+
+        {/* Video Detail Modal */}
+{selectedVideo && (
+  <div
+    className="fixed inset-0 z-[60] bg-black/10 backdrop-blur-sm flex items-center justify-center p-4"
+    onClick={(e) => {
+      if (e.target === e.currentTarget) closeVideoDetail();
+    }}
+  >
+   <div
+  className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar"
+  onClick={(e) => e.stopPropagation()}
+  style={{
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#cbd5e1 transparent'
+  }}
+>
+      {/* Header */}
+      <div className="sticky top-0 bg-white border-b border-slate-200 p-6 rounded-t-2xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">{selectedVideo.originalName}</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              Created: {formatDateTime(parseDate(selectedVideo.createdAt))}
+            </p>
+          </div>
+          <button
+            onClick={closeVideoDetail}
+            className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+          >
+            <XMarkIcon className="w-5 h-5 text-slate-600" />
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-6 space-y-6">
+        {/* Workflow Details */}
+        {selectedVideo.executionIdHistory && (
+          <div className="bg-slate-50 rounded-xl p-5">
+            <h3 className="font-semibold text-slate-700 mb-4">Workflow Details</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <span className="text-xs text-slate-500">Execution ID</span>
+                <code className="block bg-white px-3 py-2 rounded-lg text-sm font-mono mt-1">
+                  {selectedVideo.executionIdHistory.executionId}
+                </code>
+              </div>
+              <div>
+                <span className="text-xs text-slate-500">Status</span>
+                <p className="text-slate-700 mt-1 font-medium">{selectedVideo.executionIdHistory.workflowStatus}</p>
+              </div>
+              <div>
+                <span className="text-xs text-slate-500">Started</span>
+                <p className="text-slate-700 mt-1">{formatDateTime(parseDate(selectedVideo.executionIdHistory.startTime))}</p>
+              </div>
+              <div>
+                <span className="text-xs text-slate-500">Ended</span>
+                <p className="text-slate-700 mt-1">{formatDateTime(parseDate(selectedVideo.executionIdHistory.endTime))}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Generated Clips & Final Video */}
+        <GeneratedClips video={selectedVideo} openModal={openModal} />
+        <FinalVideo video={selectedVideo} />
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );
