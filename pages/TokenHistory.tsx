@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-// นำเข้าไอคอนใหม่: ChartBarIcon, PlusCircleIcon, MinusCircleIcon, ChevronLeftIcon, ChevronRightIcon
 import { 
   CurrencyDollarIcon, FunnelIcon, XMarkIcon, CalendarIcon, 
   ArrowTrendingUpIcon, ArrowTrendingDownIcon, MagnifyingGlassIcon, 
-  ChartBarIcon, PlusCircleIcon, MinusCircleIcon, ChevronLeftIcon, ChevronRightIcon 
+  ChartBarIcon, PlusCircleIcon, MinusCircleIcon, ChevronLeftIcon, ChevronRightIcon,
+  LockClosedIcon
 } from "@heroicons/react/24/outline";
 
 interface TokenEntry {
@@ -23,24 +23,22 @@ export default function TokenHistoryPage() {
   const [tokenHistory, setTokenHistory] = useState<TokenEntry[]>([]);
   const [filteredHistory, setFilteredHistory] = useState<TokenEntry[]>([]);
   const [tokens, setTokens] = useState<number>(0);
+  const [reservedTokens, setReservedTokens] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState<TokenEntry | null>(null);
   
-  // State สำหรับสถิติใหม่
   const [statistics, setStatistics] = useState({
     totalIncome: 0,
     totalExpense: 0,
   });
 
-  // Filter states
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [changeType, setChangeType] = useState<'all' | 'increase' | 'decrease'>('all');
 
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5; // จำนวนรายการต่อหน้า
+  const itemsPerPage = 5;
 
   useEffect(() => {
     const userId = localStorage.getItem('loggedInUser');
@@ -53,6 +51,7 @@ export default function TokenHistoryPage() {
       .then(res => res.json())
       .then(data => {
         setTokens(data.tokens);
+        setReservedTokens(data.reservedTokens || 0);
         const history = data.tokenHistory.filter((entry: TokenEntry) => entry.change !== 0);
         setTokenHistory(history);
         setFilteredHistory(history);
@@ -64,7 +63,6 @@ export default function TokenHistoryPage() {
       });
   }, [router]);
 
-  // Logic คำนวณสถิติ: รายรับรวมและรายจ่ายรวม
   useEffect(() => {
     let income = 0;
     let expense = 0;
@@ -83,7 +81,6 @@ export default function TokenHistoryPage() {
     });
   }, [tokenHistory]);
 
-  // Apply filters
   useEffect(() => {
     let filtered = [...tokenHistory];
 
@@ -103,7 +100,7 @@ export default function TokenHistoryPage() {
     }
 
     setFilteredHistory(filtered);
-    setCurrentPage(1); // รีเซ็ตหน้าเป็น 1 เมื่อเปลี่ยนตัวกรอง
+    setCurrentPage(1);
   }, [dateFrom, dateTo, changeType, tokenHistory]);
 
   const clearFilters = () => {
@@ -115,13 +112,13 @@ export default function TokenHistoryPage() {
   const hasActiveFilters = dateFrom || dateTo || changeType !== 'all';
 
   const formatDateTH = (dateStr: string) => {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short", // Sep, Oct, Nov...
-    day: "2-digit",
-  });
-};
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  };
 
   const formatTimeTH = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -141,17 +138,6 @@ export default function TokenHistoryPage() {
     return type ? types[type] || type : '-';
   };
 
-  const getTypeBadgeColor = (type?: string) => {
-    const colors: Record<string, string> = {
-      'video_creation': 'bg-purple-100 text-purple-700 border-purple-200',
-      'admin_adjustment': 'bg-blue-100 text-blue-700 border-blue-200',
-      'purchase': 'bg-green-100 text-green-700 border-green-200',
-      'refund': 'bg-orange-100 text-orange-700 border-orange-200',
-    };
-    return type ? colors[type] || 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-gray-100 text-gray-700 border-gray-200';
-  };
-
-  // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredHistory.slice(indexOfFirstItem, indexOfLastItem);
@@ -174,16 +160,12 @@ export default function TokenHistoryPage() {
     <div className="min-h-screen bg-gray-50 py-6 px-4">
       <div className="max-w-7xl mx-auto">
         
-        {/* Header - รวม Title, Filter และ Grid Stats */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          {/* Main Title and Filter Button */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
-            {/* Title */}
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
               <ChartBarIcon className="w-6 h-6 text-blue-600" />
               ประวัติการใช้ Token
             </h1>
-            {/* Filter Button */}
             <div className="flex items-center gap-3">
               {hasActiveFilters && (
                 <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
@@ -200,21 +182,46 @@ export default function TokenHistoryPage() {
             </div>
           </div>
 
-          {/* Grid Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Card 1: ยอดคงเหลือ */}
             <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-between mb-4">
                 <div className="bg-blue-100 rounded-xl p-3">
                   <CurrencyDollarIcon className="w-6 h-6 text-blue-600" />
                 </div>
               </div>
-              <h3 className="text-sm font-medium text-gray-600 mb-1">ยอดคงเหลือ</h3>
-              <p className="text-2xl font-bold text-blue-600">{tokens}</p>
-              <p className="text-xs text-gray-500 mt-1">Tokens</p>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">ยอดคงเหลือ</h3>
+<div className="flex items-center gap-3">
+  <div className="flex items-baseline gap-2">
+    <p className="text-3xl font-bold text-blue-600">{tokens}</p>
+    <span className="text-sm text-gray-500">Tokens</span>
+  </div>
+  {reservedTokens > 0 && (
+    <div className="flex items-center gap-1.5 bg-amber-50 px-2 py-1 rounded-md">
+      <LockClosedIcon className="w-4 h-4 text-amber-600" />
+      <span className="text-sm font-semibold text-amber-700">
+        จอง {reservedTokens} Tokens
+      </span>
+    </div>
+  )}
+</div>
+
+              {/* <h3 className="text-sm font-medium text-gray-600 mb-2">ยอดคงเหลือ</h3>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-baseline gap-2">
+                  <p className="text-3xl font-bold text-blue-600">{tokens}</p>
+                  <span className="text-sm text-gray-500">Tokens</span>
+                </div>
+                {reservedTokens > 0 && (
+                  <div className="flex items-center gap-1.5 mt-2 bg-amber-50 px-2 py-1 rounded-md">
+                    <LockClosedIcon className="w-4 h-4 text-amber-600" />
+                    <span className="text-sm font-semibold text-amber-700">
+                      จอง {reservedTokens} Tokens
+                    </span>
+                  </div>
+                )}
+              </div> */}
             </div>
            
-            {/* Card 2: รวมรายรับ */}
             <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-between mb-4">
                 <div className="bg-green-100 rounded-xl p-3">
@@ -222,12 +229,10 @@ export default function TokenHistoryPage() {
                 </div>
                 <ArrowTrendingUpIcon className="w-5 h-5 text-green-500" />
               </div>
-              <h3 className="text-sm font-medium text-gray-600 mb-1">Tokens ที่ได้รับ (+)</h3>
-              <p className="text-2xl font-bold text-green-600">+{statistics.totalIncome}</p>
-              {/* <p className="text-xs text-gray-500 mt-1">Tokens</p> */}
+              <h3 className="text-sm font-medium text-gray-600 mb-2">Tokens ที่ได้รับ (+)</h3>
+              <p className="text-3xl font-bold text-green-600">+{statistics.totalIncome}</p>
             </div>
 
-            {/* Card 3: รวมรายจ่าย */}
             <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-between mb-4">
                 <div className="bg-red-100 rounded-xl p-3">
@@ -235,13 +240,11 @@ export default function TokenHistoryPage() {
                 </div>
                 <ArrowTrendingDownIcon className="w-5 h-5 text-red-500" />
               </div>
-              <h3 className="text-sm font-medium text-gray-600 mb-1">Tokens ที่ใช้ไป (–)</h3>
-              <p className="text-2xl font-bold text-red-600">-{statistics.totalExpense}</p>
-              {/* <p className="text-xs text-gray-500 mt-1">Tokens</p> */}
+              <h3 className="text-sm font-medium text-gray-600 mb-2">Tokens ที่ใช้ไป (−)</h3>
+              <p className="text-3xl font-bold text-red-600">-{statistics.totalExpense}</p>
             </div>
           </div>
 
-          {/* Active Filters Summary */}
           {hasActiveFilters && (
             <div className="mt-6 pt-4 border-t border-gray-200">
               <div className="flex flex-wrap items-center gap-2">
@@ -272,143 +275,117 @@ export default function TokenHistoryPage() {
           )}
         </div>
 
-       {/* Results Info and Pagination */}
-<div className="mb-6 flex items-center justify-between flex-wrap gap-4 px-4 sm:px-6">
-  <p className="text-sm text-gray-600 font-medium flex items-center gap-2">
-    <MagnifyingGlassIcon className="w-4 h-4 text-gray-400" />
-    แสดง{' '}
-    <span className="font-semibold text-blue-600">
-      {indexOfFirstItem + 1}-
-      {indexOfLastItem > filteredHistory.length ? filteredHistory.length : indexOfLastItem}
-    </span>{' '}
-    {' '}
-    <span className="text-gray-500">
-      จาก {filteredHistory.length}
-    </span>
-  </p>
-  <div className="flex items-center gap-2">
-    <button
-      onClick={() => paginate(currentPage - 1)}
-      disabled={currentPage === 1}
-      className="px-2 py-1 rounded-lg bg-gray-200 text-gray-700 disabled:opacity-50 hover:bg-gray-300 transition-colors"
-    >
-      <ChevronLeftIcon className="w-5 h-5" />
-    </button>
-    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-      <button
-        key={page}
-        onClick={() => paginate(page)}
-        className={`px-3 py-1 rounded-lg text-sm font-medium ${
-          currentPage === page ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-        } transition-colors`}
-      >
-        {page}
-      </button>
-    ))}
-    <button
-      onClick={() => paginate(currentPage + 1)}
-      disabled={currentPage === totalPages}
-      className="px-2 py-1 rounded-lg bg-gray-200 text-gray-700 disabled:opacity-50 hover:bg-gray-300 transition-colors"
-    >
-      <ChevronRightIcon className="w-5 h-5" />
-    </button>
-  </div>
-</div>
-
-{/* Table */}
-{filteredHistory.length === 0 ? (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-    <MagnifyingGlassIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-    <p className="text-gray-500 text-lg">ไม่พบข้อมูลที่ตรงกับตัวกรอง</p>
-  </div>
-) : (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-    <div className="overflow-x-auto">
-      <table className="w-full table-auto">
-        <thead>
-  <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-1/5 min-w-[120px]">
-      รายการ
-    </th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-1/6 min-w-[100px]">
-      วันที่
-    </th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-1/6 min-w-[80px]">
-      เวลา
-    </th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-1/6 min-w-[100px]">
-      จำนวน
-    </th>
-    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-1/6 min-w-[80px]">
-      ดูเพิ่มเติม
-    </th>
-  </tr>
-</thead>
-<tbody className="divide-y divide-gray-100">
-  {currentItems.map((entry, idx) => (
-    <tr
-      key={idx}
-      className={`hover:bg-blue-50 transition-colors cursor-pointer ${
-        idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-      }`}
-      onClick={() => setSelectedEntry(entry)}
-    >
-      {/* รายการ */}
-      <td className="px-6 py-4 whitespace-nowrap w-1/5 min-w-[120px]">
-        <span className="text-sm font-medium text-gray-900">
-          {entry.type ? getTypeLabel(entry.type) : (entry.change > 0 ? 'เพิ่ม Token' : 'ลด Token')}
-        </span>
-      </td>
-      {/* วันที่ */}
-      <td className="px-6 py-4 whitespace-nowrap w-1/6 min-w-[100px]">
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="w-4 h-4 text-gray-400" />
-          <span className="text-sm font-medium text-gray-900">
-            {formatDateTH(entry.date)}
-          </span>
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-4 px-4 sm:px-6">
+          <p className="text-sm text-gray-600 font-medium flex items-center gap-2">
+            <MagnifyingGlassIcon className="w-4 h-4 text-gray-400" />
+            แสดง <span className="font-semibold text-blue-600">{indexOfFirstItem + 1}-{indexOfLastItem > filteredHistory.length ? filteredHistory.length : indexOfLastItem}</span> จาก <span className="text-gray-500">{filteredHistory.length}</span>
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-2 py-1 rounded-lg bg-gray-200 text-gray-700 disabled:opacity-50 hover:bg-gray-300 transition-colors"
+            >
+              <ChevronLeftIcon className="w-5 h-5" />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => paginate(page)}
+                className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                  currentPage === page ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                } transition-colors`}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-2 py-1 rounded-lg bg-gray-200 text-gray-700 disabled:opacity-50 hover:bg-gray-300 transition-colors"
+            >
+              <ChevronRightIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-      </td>
-      {/* เวลา */}
-      <td className="px-6 py-4 whitespace-nowrap w-1/6 min-w-[80px]">
-        <span className="text-sm text-gray-600">
-          {formatTimeTH(entry.date)}
-        </span>
-      </td>
-      {/* จำนวน */}
-      <td className="px-6 py-4 whitespace-nowrap w-1/6 min-w-[100px]">
-        <div className="flex items-center gap-2">
-          {entry.change > 0 ? (
-            <ArrowTrendingUpIcon className="w-5 h-5 text-green-500" />
-          ) : (
-            <ArrowTrendingDownIcon className="w-5 h-5 text-red-500" />
-          )}
-          <span className={`text-lg font-bold ${entry.change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {entry.change > 0 ? '+' : ''}{entry.change}
-          </span>
-        </div>
-      </td>
-      {/* ดูเพิ่มเติม */}
-      <td className="px-6 py-4 whitespace-nowrap text-center w-1/6 min-w-[80px]">
-        <button
-          onClick={() => setSelectedEntry(entry)}
-          className="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors"
-        >
-          ดูเพิ่มเติม
-        </button>
-      </td>
-    </tr>
-  ))}
-</tbody>
-      </table>
-    </div>
-  </div>
-)}
 
-        {/* Filter Modal */}
+        {filteredHistory.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <MagnifyingGlassIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg">ไม่พบข้อมูลที่ตรงกับตัวกรอง</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <ChartBarIcon className="w-5 h-5" />
+                ตารางประวัติการเปลี่ยนแปลง Token
+              </h2>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full table-auto">
+                <thead>
+                  <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-1/5 min-w-[120px]">รายการ</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-1/6 min-w-[100px]">วันที่</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-1/6 min-w-[80px]">เวลา</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-1/6 min-w-[100px]">จำนวน</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-1/6 min-w-[80px]">ดูเพิ่มเติม</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {currentItems.map((entry, idx) => (
+                    <tr
+                      key={idx}
+                      className={`hover:bg-blue-50 transition-colors cursor-pointer ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                      onClick={() => setSelectedEntry(entry)}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap w-1/5 min-w-[120px]">
+                        <span className="text-sm font-medium text-gray-900">
+                          {entry.type ? getTypeLabel(entry.type) : (entry.change > 0 ? 'เพิ่ม Token' : 'ลด Token')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap w-1/6 min-w-[100px]">
+                        <div className="flex items-center gap-2">
+                          <CalendarIcon className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm font-medium text-gray-900">{formatDateTH(entry.date)}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap w-1/6 min-w-[80px]">
+                        <span className="text-sm text-gray-600">{formatTimeTH(entry.date)}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap w-1/6 min-w-[100px]">
+                        <div className="flex items-center gap-2">
+                          {entry.change > 0 ? (
+                            <ArrowTrendingUpIcon className="w-5 h-5 text-green-500" />
+                          ) : (
+                            <ArrowTrendingDownIcon className="w-5 h-5 text-red-500" />
+                          )}
+                          <span className={`text-lg font-bold ${entry.change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {entry.change > 0 ? '+' : ''}{entry.change}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center w-1/6 min-w-[80px]">
+                        <button
+                          onClick={() => setSelectedEntry(entry)}
+                          className="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors"
+                        >
+                          ดูเพิ่มเติม
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {showFilterModal && (
           <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4 animate-fadeIn">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
-              {/* Modal Header */}
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-2xl">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
@@ -426,13 +403,9 @@ export default function TokenHistoryPage() {
                 </div>
               </div>
 
-              {/* Modal Body */}
               <div className="p-6 space-y-5">
-                {/* Date From */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    จากวันที่
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">จากวันที่</label>
                   <input
                     type="date"
                     value={dateFrom}
@@ -441,11 +414,8 @@ export default function TokenHistoryPage() {
                   />
                 </div>
 
-                {/* Date To */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    ถึงวันที่
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">ถึงวันที่</label>
                   <input
                     type="date"
                     value={dateTo}
@@ -454,39 +424,24 @@ export default function TokenHistoryPage() {
                   />
                 </div>
 
-                {/* Change Type */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    ประเภทการเปลี่ยนแปลง
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">ประเภทการเปลี่ยนแปลง</label>
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => setChangeType('all')}
-                      className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
-                        changeType === 'all'
-                          ? 'bg-blue-600 text-white shadow-md'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                      className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${changeType === 'all' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                     >
                       ทั้งหมด
                     </button>
                     <button
                       onClick={() => setChangeType('increase')}
-                      className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
-                        changeType === 'increase'
-                          ? 'bg-green-600 text-white shadow-md'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                      className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${changeType === 'increase' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                     >
                       เพิ่ม +
                     </button>
                     <button
                       onClick={() => setChangeType('decrease')}
-                      className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
-                        changeType === 'decrease'
-                          ? 'bg-red-600 text-white shadow-md'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                      className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${changeType === 'decrease' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                     >
                       ลด -
                     </button>
@@ -494,7 +449,6 @@ export default function TokenHistoryPage() {
                 </div>
               </div>
 
-              {/* Modal Footer */}
               <div className="p-6 bg-gray-50 rounded-b-2xl flex gap-3">
                 <button
                   onClick={() => {
@@ -516,16 +470,16 @@ export default function TokenHistoryPage() {
           </div>
         )}
 
-        {/* Detail Modal */}
         {selectedEntry && (
           <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4 animate-fadeIn">
             <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-              {/* Modal Header */}
-              <div className={`bg-gradient-to-r ${
-                selectedEntry.change > 0 
-                  ? 'from-green-600 to-emerald-600' 
-                  : 'from-red-600 to-rose-600'
-              } text-white p-6`}>
+              <div
+  className={`bg-gradient-to-r ${
+    selectedEntry.change > 0
+      ? 'from-green-400 to-emerald-500'
+      : 'from-red-400 to-rose-500'
+  } text-white p-6`}
+>
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
                     <div className="p-3">
@@ -550,9 +504,7 @@ export default function TokenHistoryPage() {
                   </button>
                 </div>
 
-                {/* Token Display */}
                 <div className="bg-white/20 rounded-xl p-4 flex flex-col sm:flex-row gap-4">
-                  {/* Left: Token Change */}
                   <div className="flex-1">
                     <p className="text-white font-semibold text-sm mb-1 drop-shadow-sm">จำนวนที่เปลี่ยนแปลง</p>
                     <p className="text-4xl font-bold text-white drop-shadow-sm">
@@ -560,7 +512,6 @@ export default function TokenHistoryPage() {
                       <span className="text-xl ml-2 font-normal text-white drop-shadow-sm">Tokens</span>
                     </p>
                   </div>
-                  {/* Right: Reason */}
                   <div className="flex-1">
                     <p className="text-white font-semibold text-sm mb-1 drop-shadow-sm">สาเหตุ</p>
                     {selectedEntry.reason && selectedEntry.reason.trim() ? (
@@ -570,10 +521,8 @@ export default function TokenHistoryPage() {
                 </div>
               </div>
 
-              {/* Modal Body */}
               {(selectedEntry.executionId?.trim() || selectedEntry.folderName?.trim() || selectedEntry.fileName?.trim() || selectedEntry._id?.$oid) && (
                 <div className="p-6 overflow-y-auto max-h-[calc(90vh-280px)] space-y-4">
-                  {/* Additional Details */}
                   {(selectedEntry.executionId?.trim() || selectedEntry.folderName?.trim() || selectedEntry.fileName?.trim()) && (
                     <div className="bg-blue-50 rounded-xl p-4 space-y-3">
                       <h3 className="font-semibold text-gray-900 text-sm mb-2">ข้อมูลเพิ่มเติม</h3>
@@ -582,7 +531,6 @@ export default function TokenHistoryPage() {
                       {selectedEntry.fileName?.trim() && <DetailRow label="ไฟล์" value={selectedEntry.fileName} icon="📄" />}
                     </div>
                   )}
-                  {/* Record ID */}
                   {selectedEntry._id?.$oid && (
                     <div className="bg-gray-100 rounded-lg p-3">
                       <p className="text-xs text-gray-700 mb-1">Record ID</p>
@@ -605,12 +553,7 @@ export default function TokenHistoryPage() {
   );
 }
 
-function DetailRow({ label, value, icon, className = '' }: { 
-  label: string; 
-  value?: string | null; 
-  icon?: string;
-  className?: string;
-}) {
+function DetailRow({ label, value, icon }: { label: string; value?: string | null; icon?: string }) {
   const displayValue = value?.trim() || '-';
   if (!value?.trim()) return null;
   
@@ -620,9 +563,7 @@ function DetailRow({ label, value, icon, className = '' }: {
         {icon && <span className="mr-1">{icon}</span>}
         {label}:
       </div>
-      <div className={`text-xs text-gray-900 flex-1 ${className}`}>
-        {displayValue} 
-      </div>
+      <div className="text-xs text-gray-900 flex-1">{displayValue}</div>
     </div>
   );
 }

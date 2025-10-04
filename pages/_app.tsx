@@ -10,6 +10,7 @@ interface UserProfile {
   userId: string
   name: string
   tokens: number
+  reservedTokens?: number // เพิ่มบรรทัดนี้
 }
 
 export default function MyApp({ Component, pageProps }: AppProps) {
@@ -23,7 +24,12 @@ export default function MyApp({ Component, pageProps }: AppProps) {
       fetch(`/api/users/profile?userId=${userId}`)
         .then(res => res.json())
         .then(data => {
-          setUser(data.user)
+          setUser({
+            userId: data.user.userId,
+            name: data.user.name,
+            tokens: data.user.tokens,
+            reservedTokens: data.user.reservedTokens || 0 // เพิ่มบรรทัดนี้
+          })
           setLoading(false)
         })
         .catch(() => {
@@ -40,7 +46,6 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     return <div className="flex items-center justify-center h-screen">กำลังโหลดข้อมูลผู้ใช้...</div>
   }
 
-  // หน้า /, /login หรือ /admin ไม่ใช้ Layout
   if (
     router.pathname === '/' ||
     router.pathname === '/login' ||
@@ -53,7 +58,6 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     )
   }
 
-  // หน้าอื่น ๆ ใช้ Layout
   return (
     <StepProvider>
       <Layout user={user} setUser={setUser}>
