@@ -39,61 +39,77 @@ export default function EnhancedFileCard({ fileId, onDataLoaded }: EnhancedFileC
     return `${datePart} ${timePart}`;
   }
 
-  useEffect(() => {
-    async function fetchFileDetails() {
-      try {
-        const res = await fetch(`/api/status-wf?id=${fileId}&t=${Date.now()}`)
+  // แทนที่ส่วน useEffect ใน EnhancedFileCard.tsx
 
-        if (!res.ok) {
-          console.error("Failed to fetch file details:", res.status)
-          setError(true)
-          setLoading(false)
-          return
-        }
+useEffect(() => {
+  async function fetchFileDetails() {
+    try {
+      const res = await fetch(`/api/status-wf?id=${fileId}&t=${Date.now()}`)
 
-        const data = await res.json()
-        console.log("API Response:", data)
-
-        // Calculate required clips from folders.subfolders
-        let requiredClips = 0
-        if (data.folders?.subfolders && Array.isArray(data.folders.subfolders)) {
-          requiredClips = data.folders.subfolders.length
-        }
-
-        // Count only video clips (not finalVideo)
-        let createdClips = 0
-        if (data.clips && Array.isArray(data.clips)) {
-          createdClips = data.clips.filter((clip: any) => clip.video && !clip.finalVideo).length
-        }
-
-        const details = {
-          fileName: data.originalName || "ไม่พบชื่อไฟล์",
-          totalClips: requiredClips,
-          createdClips: createdClips,
-          tokensReserved: data.tokensReserved || 0,
-          status: data.status || "unknown",
-          createdAt: data.createdAt || null,
-        }
-
-        console.log("Processed file details:", details)
-        setFileDetails(details)
-
-        if (onDataLoaded) {
-          onDataLoaded(data)
-        }
-
-        setLoading(false)
-      } catch (error) {
-        console.error("Error fetching file details:", error)
+      if (!res.ok) {
+        console.error("Failed to fetch file details:", res.status)
         setError(true)
         setLoading(false)
+        return
       }
-    }
 
-    if (fileId) {
-      fetchFileDetails()
+      const data = await res.json()
+      console.log("API Response:", data)
+
+      // Calculate required clips from folders.subfolders
+      let requiredClips = 0
+      if (data.folders?.subfolders && Array.isArray(data.folders.subfolders)) {
+        requiredClips = data.folders.subfolders.length
+      }
+
+      // 🔥 แก้ไข: นับทั้ง video clips และ finalVideo
+      let createdClips = 0
+      let hasFinalVideo = false
+      
+      if (data.clips && Array.isArray(data.clips)) {
+        // นับทั้ง video clips และ finalVideo
+          createdClips = data.clips.filter((clip: any) => clip.video || clip.finalVideo).length
+        // นับจำนวน video clips (ไม่รวม finalVideo)
+        // const videoClips = data.clips.filter((clip: any) => clip.video && !clip.finalVideo).length
+        
+        // console.log(`📊 Video clips: ${videoClips}, Final video: ${hasFinalVideo ? 1 : 0}, Total: ${createdClips}`)
+
+        // // เช็คว่ามี finalVideo หรือไม่
+        // hasFinalVideo = data.clips.some((clip: any) => clip.finalVideo)
+        
+        // // รวม video clips + finalVideo (ถ้ามี)
+        // createdClips = videoClips + (hasFinalVideo ? 1 : 0)
+      }
+
+      const details = {
+        fileName: data.originalName || "ไม่พบชื่อไฟล์",
+        totalClips: requiredClips,
+        createdClips: createdClips, // ตอนนี้จะนับ finalVideo ด้วยแล้ว
+        tokensReserved: data.tokensReserved || 0,
+        status: data.status || "unknown",
+        createdAt: data.createdAt || null,
+      }
+
+      console.log("Processed file details:", details)
+      
+      setFileDetails(details)
+
+      if (onDataLoaded) {
+        onDataLoaded(data)
+      }
+
+      setLoading(false)
+    } catch (error) {
+      console.error("Error fetching file details:", error)
+      setError(true)
+      setLoading(false)
     }
-  }, [fileId, onDataLoaded])
+  }
+
+  if (fileId) {
+    fetchFileDetails()
+  }
+}, [fileId, onDataLoaded])
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(fileId)
@@ -138,12 +154,11 @@ export default function EnhancedFileCard({ fileId, onDataLoaded }: EnhancedFileC
   // Add 1 for final video
   // ดึงจาก fileDetails state
 const normalClips = fileDetails?.createdClips || 0
-
+const totalCreatedClips = fileDetails?.createdClips || 0
 // สมมติว่า final video อยู่จริงหรือไม่
 // ถ้า API ไม่มีข้อมูล finalVideo, ต้องดึงจาก clips ที่ส่งมาใน onDataLoaded
 const hasFinalVideo = fileDetails?.status === 'complete' // หรือเงื่อนไขที่เช็ค final video จริง ๆ
 
-const totalCreatedClips = normalClips + (hasFinalVideo ? 1 : 0)
 const totalClipsWithFinal = (fileDetails?.totalClips || 0) + 1
 const progressPercent = totalClipsWithFinal > 0
   ? (totalCreatedClips / totalClipsWithFinal) * 100

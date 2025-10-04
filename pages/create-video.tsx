@@ -582,20 +582,26 @@ async function confirmStartVideo() {
 
           {/* Token Usage Popup - แสดงแค่ว่างานสำเร็จ */}
 {tokenPopup.visible && (
-  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 backdrop-blur-sm">
-    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-fade-in">
-      <div className="text-center mb-6">
-        <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-          <span className="text-white text-4xl">✓</span>
+  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 p-4">
+    <div className="bg-white border-2 border-green-200 rounded-2xl p-6 max-w-lg w-full shadow-2xl">
+      {/* Header */}
+      <div className="flex items-center space-x-4 mb-4">
+        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-white text-2xl">✓</span>
         </div>
-        <h3 className="font-bold text-green-900 text-2xl mb-2">สร้างวิดีโอสำเร็จ!</h3>
-        <p className="text-green-700 text-sm">วิดีโอของคุณถูกสร้างเรียบร้อยแล้ว</p>
+        <div>
+          <h3 className="font-semibold text-green-800 text-lg">สร้างวิดีโอสำเร็จ!</h3>
+          <p className="text-green-600 text-sm mt-1">
+            วิดีโอของคุณถูกสร้างเรียบร้อยแล้ว
+          </p>
+        </div>
       </div>
       
-      <div className="flex justify-end">
+      {/* Close Button */}
+      <div className="flex justify-end mt-6">
         <button
           onClick={() => setTokenPopup({ visible: false, tokensUsed: 0, remainingTokens: 0 })}
-          className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
+          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200 text-sm font-medium"
         >
           ปิด
         </button>
