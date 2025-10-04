@@ -22,7 +22,6 @@ interface Clip {
 
 const BASE_VIDEO_URL = 'http://192.168.70.166:8080/';
 
-
 export default function CreateVideo() {
   const router = useRouter();
   const idParam = router.query.id;
@@ -33,6 +32,7 @@ export default function CreateVideo() {
   const [error, setError] = useState<string | null>(null);
   const [clips, setClips] = useState<Clip[]>([]);
   const [finalVideo, setFinalVideo] = useState<Clip | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   const [tokenPopup, setTokenPopup] = useState<{
     visible: boolean;
     tokensUsed?: number;
@@ -44,6 +44,13 @@ export default function CreateVideo() {
   error?: string;
 }>({ visible: false, executionId: null, error: '' });
 
+  const [confirmStartPopup, setConfirmStartPopup] = useState(false);
+  const [confirmCancelPopup, setConfirmCancelPopup] = useState(false);
+  
+  const [cancelSuccessPopup, setCancelSuccessPopup] = useState<{
+  visible: boolean;
+  tokensReturned: number;
+}>({ visible: false, tokensReturned: 0 });
   const { currentStep, setCurrentStep } = useStep();
   const steps = ['อัปโหลดไฟล์', 'รายการไฟล์', 'สร้างวิดีโอ'];
   const refreshInterval = 10000;
@@ -72,7 +79,11 @@ export default function CreateVideo() {
     
     console.log('เช็คสถานะวิดีโอสำหรับ id:', id);
     checkExistingStatus(id);
-    const interval = setInterval(() => checkExistingStatus(id), refreshInterval);
+    const interval = setInterval(() => {
+    if (id) { // เพิ่มการตรวจสอบอีกครั้งเพื่อความปลอดภัย
+      checkExistingStatus(id);
+    }
+  }, refreshInterval);
     return () => clearInterval(interval); 
   }, [id, currentStep, setCurrentStep, refreshInterval]); 
 
@@ -97,20 +108,20 @@ export default function CreateVideo() {
       const data = await res.json();
       console.log('API data:', data);
       
-      // 🔥 ตรวจสอบว่างานเสร็จสิ้นและมีข้อมูล token
-      const newStatus = data.status || 'unknown';
-      const isCompleted = newStatus === 'succeeded' || newStatus === 'completed';
-      const wasNotCompleted = status?.status !== 'succeeded' && status?.status !== 'completed';
-      
-      // 🔥 แสดง popup เฉพาะเมื่องานเพิ่งเสร็จ (ไม่ใช่เสร็จอยู่แล้ว)
-      if (isCompleted && wasNotCompleted && data.tokensUsed !== undefined && data.remainingTokens !== undefined) {
-        console.log('🎉 แสดง Token Popup:', { tokensUsed: data.tokensUsed, remainingTokens: data.remainingTokens });
-        setTokenPopup({ 
-          visible: true, 
-          tokensUsed: data.tokensUsed,
-          remainingTokens: data.remainingTokens
-        });
-      }
+      // ตรวจสอบว่างานเสร็จสิ้น
+const newStatus = data.status || 'unknown';
+const isCompleted = newStatus === 'succeeded' || newStatus === 'completed';
+const wasNotCompleted = status?.status !== 'succeeded' && status?.status !== 'completed';
+
+// แสดง popup เฉพาะเมื่องานเพิ่งเสร็จ (ไม่ใช่เสร็จอยู่แล้ว)
+if (isCompleted && wasNotCompleted) {
+  console.log('🎉 แสดง Success Popup');
+  setTokenPopup({ 
+    visible: true,
+    tokensUsed: 0,  // ไม่ต้องใช้แล้ว
+    remainingTokens: 0  // ไม่ต้องใช้แล้ว
+  });
+}
 
       // หลังจากเช็ค token popup แล้ว เพิ่มส่วนนี้:
 const isError = newStatus === 'error';
@@ -165,6 +176,67 @@ if (isError && wasNotError) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     }
   }
+
+// แก้ไขฟังก์ชัน
+async function cancelQueue() {
+  if (!id) return;
+  
+  // เปลี่ยนจาก confirm() เป็น custom popup
+  setConfirmCancelPopup(true);
+}
+
+// ฟังก์ชันจริงที่ยกเลิกคิว
+async function confirmCancelQueue() {
+  if (!id) return; // เพิ่ม guard clause ที่นี่ด้วย
+  
+  setConfirmCancelPopup(false);
+  setCancelling(true);
+  
+  try {
+    const res = await fetch('/api/cancel-queue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileId: id })
+    });
+
+    const result = await res.json();
+
+    if (res.ok) {
+      setCancelSuccessPopup({
+        visible: true,
+        tokensReturned: result.tokensReturned
+      });
+      await checkExistingStatus(id); // ตรงนี้ id จะไม่เป็น undefined แน่นอน
+    } else {
+      setErrorPopup({
+        visible: true,
+        executionId: null,
+        error: result.message || 'ไม่สามารถยกเลิกคิวได้'
+      });
+    }
+  } catch (error) {
+    console.error('Error cancelling queue:', error);
+    setErrorPopup({
+      visible: true,
+      executionId: null,
+      error: 'เกิดข้อผิดพลาดในการยกเลิกคิว'
+    });
+  } finally {
+    setCancelling(false);
+  }
+}
+
+  // เพิ่มฟังก์ชันยืนยันการเริ่มต้น
+async function handleStartVideo() {
+  setConfirmStartPopup(true);
+}
+
+// ฟังก์ชันจริงที่เริ่มสร้างวิดีโอ
+async function confirmStartVideo() {
+  setConfirmStartPopup(false);
+  setIsVideoStarted(true);
+  startVideoCreation();
+}
 
   async function startVideoCreation() {
     if (!id) {
@@ -334,13 +406,36 @@ if (isError && wasNotError) {
         {getStatusIcon(status.status)}
         <span>สถานะการทำงาน</span>
       </h3>
-      {(status.status === 'running' || status.status === 'queued') && (
-        <div className="flex space-x-1">
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-        </div>
-      )}
+      <div className="flex items-center space-x-3">
+        {/* ปุ่มยกเลิกคิว - แสดงเฉพาะเมื่อ status เป็น queued */}
+        {status.status === 'queued' && (
+          <button
+            onClick={cancelQueue}
+            disabled={cancelling}
+            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+          >
+            {cancelling ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>กำลังยกเลิก...</span>
+              </>
+            ) : (
+              <>
+                <span>✕</span>
+                <span>ยกเลิกคิว</span>
+              </>
+            )}
+          </button>
+        )}
+        
+        {(status.status === 'running' || status.status === 'queued') && (
+          <div className="flex space-x-1">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          </div>
+        )}
+      </div>
     </div>
 
     {/* Main Info Grid */}
@@ -376,86 +471,166 @@ if (isError && wasNotError) {
         <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
           <span className="text-white text-xl">⏳</span>
         </div>
-        <div>
+        <div className="flex-1">
           <h4 className="font-bold text-yellow-800 mb-1">งานของคุณอยู่ในคิว</h4>
           <p className="text-yellow-700 text-sm">
             ลำดับที่ {status.queuePosition} - ระบบจะเริ่มดำเนินการโดยอัตโนมัติเมื่อถึงลำดับ
           </p>
+        </div>
+        <div className="text-sm text-yellow-600">
+          คุณสามารถยกเลิกคิวนี้ได้ →
         </div>
       </div>
     )}
   </div>
 )}
 
-          {/* Error Alert */}
-          {errorPopup.visible && (
-  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30">
-    <div className="bg-white border-2 border-red-200 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl animate-fade-in">
-      <div className="flex items-center space-x-4">
-        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+          {/* Confirm Cancel Popup */}
+{confirmCancelPopup && (
+  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 p-4">
+    <div className="bg-white border-2 border-yellow-200 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+      <div className="flex items-center space-x-4 mb-4">
+        <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0">
           <span className="text-white text-2xl">⚠️</span>
         </div>
         <div>
-          <h3 className="font-semibold text-red-800 text-lg mb-2">เกิดข้อผิดพลาด</h3>
-          <p className="text-red-600 text-sm">{error}</p>
-          {/* ข้อความใหม่ */}
-          <p className="text-gray-700 text-sm mt-2">
-            สามารถปิดหน้าต่างนี้แล้วส่งคำขอเพื่อสร้างใหม่
+          <h3 className="font-semibold text-yellow-800 text-lg">ยืนยันการยกเลิก</h3>
+          <p className="text-yellow-700 text-sm mt-1">
+            คุณแน่ใจหรือไม่ที่จะยกเลิกคิวนี้? 
           </p>
         </div>
       </div>
-      <div className="mt-6 flex justify-end">
-       <button
-  onClick={() => setErrorPopup({ ...errorPopup, visible: false })}
-  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium"
->
-  ปิด
-</button>
+      <div className="flex justify-end space-x-3 mt-6">
+        <button
+          onClick={() => setConfirmCancelPopup(false)}
+          className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors duration-200 text-sm font-medium"
+        >
+          ยกเลิก
+        </button>
+        <button
+          onClick={confirmCancelQueue}
+          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium"
+        >
+          ยืนยัน
+        </button>
       </div>
     </div>
   </div>
 )}
 
+          {/* Confirm Start Video Popup */}
+{confirmStartPopup && (
+  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 p-4">
+    <div className="bg-white border-2 border-blue-200 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+      <div className="flex items-center space-x-4 mb-4">
+        <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-white text-2xl">ℹ️</span>
+        </div>
+        <div>
+          <h3 className="font-semibold text-blue-800 text-lg">ยืนยันการสร้างวิดีโอ</h3>
+          <p className="text-blue-700 text-sm mt-1">
+            เมื่อเริ่มสร้างวิดีโอแล้ว คุณจะไม่สามารถยกเลิกได้จนกว่าจะเสร็จสิ้น คุณต้องการดำเนินการต่อหรือไม่?
+          </p>
+        </div>
+      </div>
+      <div className="flex justify-end space-x-3 mt-6">
+        <button
+          onClick={() => setConfirmStartPopup(false)}
+          className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors duration-200 text-sm font-medium"
+        >
+          ยกเลิก
+        </button>
+        <button
+          onClick={confirmStartVideo}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 text-sm font-medium"
+        >
+          ยืนยัน
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
-          {/* Token Usage Popup */}
-          {tokenPopup.visible && (
-            <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 backdrop-blur-sm">
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-fade-in">
-                <div className="text-center mb-6">
-                  <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <span className="text-white text-4xl">✓</span>
-                  </div>
-                  <h3 className="font-bold text-green-900 text-2xl mb-2">สร้างวิดีโอสำเร็จ!</h3>
-                  <p className="text-green-700 text-sm">วิดีโอของคุณถูกสร้างเรียบร้อยแล้ว</p>
-                </div>
-                
-                <div className="space-y-4 mb-6">
-                  <div className="bg-white rounded-lg p-4 border border-green-200 shadow-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600 font-medium">เหรียญที่ใช้ไป:</span>
-                      <span className="text-red-600 font-bold text-xl">-{tokenPopup.tokensUsed || 0} 🪙</span>
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 border border-green-200 shadow-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600 font-medium">เหรียญคงเหลือ:</span>
-                      <span className="text-green-600 font-bold text-xl">{tokenPopup.remainingTokens || 0} 🪙</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => setTokenPopup({ visible: false, tokensUsed: 0, remainingTokens: 0 })}
-                    className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
-                  >
-                    รับทราบ
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Error Alert */}
+          {errorPopup.visible && (
+  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 p-4">
+    <div className="bg-white border-2 border-red-200 rounded-2xl p-6 max-w-lg w-full shadow-2xl">
+      {/* Header */}
+      <div className="flex items-center space-x-4 mb-4">
+        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-white text-2xl">⚠️</span>
+        </div>
+        <div>
+          <h3 className="font-semibold text-red-800 text-lg">เกิดข้อผิดพลาด!</h3>
+          <p className="text-red-600 text-sm mt-1">
+            {errorPopup.error || 'ไม่สามารถสร้างวิดีโอได้'}  {/* 🔥 แก้ตรงนี้ */}
+          </p>
+        </div>
+      </div>    
+      {/* Close Button */}
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={() => setErrorPopup({ visible: false, executionId: null, error: '' })}
+          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium"
+        >
+          ปิด
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+          {/* Token Usage Popup - แสดงแค่ว่างานสำเร็จ */}
+{tokenPopup.visible && (
+  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 backdrop-blur-sm">
+    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-fade-in">
+      <div className="text-center mb-6">
+        <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <span className="text-white text-4xl">✓</span>
+        </div>
+        <h3 className="font-bold text-green-900 text-2xl mb-2">สร้างวิดีโอสำเร็จ!</h3>
+        <p className="text-green-700 text-sm">วิดีโอของคุณถูกสร้างเรียบร้อยแล้ว</p>
+      </div>
+      
+      <div className="flex justify-end">
+        <button
+          onClick={() => setTokenPopup({ visible: false, tokensUsed: 0, remainingTokens: 0 })}
+          className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
+        >
+          ปิด
+        </button>
+      </div>
+    </div>
+  </div>
+)}
           
+          {/* Cancel Success Popup */}
+{cancelSuccessPopup.visible && (
+  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 p-4">
+    <div className="bg-white border-2 border-green-200 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+      <div className="flex items-center space-x-4 mb-4">
+        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-white text-2xl">✓</span>
+        </div>
+        <div>
+          <h3 className="font-semibold text-green-800 text-lg">ยกเลิกคิวสำเร็จ!</h3>
+          <p className="text-green-600 text-sm mt-1">
+            คืน {cancelSuccessPopup.tokensReturned} token ให้คุณแล้ว
+          </p>
+        </div>
+      </div>
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={() => setCancelSuccessPopup({ visible: false, tokensReturned: 0 })}
+          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200 text-sm font-medium"
+        >
+          ปิด
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
           {/* Generated Clips */}
           {clips.length > 0 && (
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-200">
@@ -543,10 +718,11 @@ if (isError && wasNotError) {
                   : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
               }`}
               // onClick={startVideoCreation}
-               onClick={() => {
-    setIsVideoStarted(true); // 🔥 เพิ่มตรงนี้
-    startVideoCreation();    // เรียก API เริ่มสร้างวิดีโอ
-  }}
+  //              onClick={() => {
+  //   setIsVideoStarted(true); // 🔥 เพิ่มตรงนี้
+  //   startVideoCreation();    // เรียก API เริ่มสร้างวิดีโอ
+  // }}
+            onClick={handleStartVideo}
             >
               {loading ? (
                 <>
