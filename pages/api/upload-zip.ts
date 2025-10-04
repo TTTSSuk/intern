@@ -6,6 +6,7 @@ import AdmZip from 'adm-zip';
 import clientPromise from '@/lib/mongodb';
 import { readFolderRecursive, Folder } from '@/lib/readFolderRecursive';
 import { ObjectId } from 'mongodb';
+import path from 'path';
 
 export const config = {
   api: {
@@ -140,13 +141,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const db = client.db();
       const videosCollection = db.collection('listfile');
 
-      const relativePath = `./uploads/${zipFile.newFilename}`;
+      const uploadedFileName = path.basename(zipFile.filepath); // ชื่อไฟล์จริงที่ formidable สร้าง
+      const relativePath = `./uploads/mainfile/${uploadedFileName}`;
       
-      // สร้าง document ใหม่เก็บข้อมูลไฟล์ พร้อมโครงสร้างโฟลเดอร์
       const videoDoc = {
         userId,
         originalName: zipFile.originalFilename || 'unknown.zip',
-        originalFilePath: relativePath, // ใช้ relative path
+        originalFilePath: relativePath, // ใช้ relative path พร้อม mainfile folder
+        // uploadedFileName, // เก็บชื่อไฟล์จริงด้วย
         extractPath,
         status: 'done',
         createdAt: new Date(),
