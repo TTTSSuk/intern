@@ -51,6 +51,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         originalName: file.originalName,
         status: file.status,
         createdAt: file.createdAt,
+         folders: file.folders,
+        clips: file.clips,
+        executionIdHistory: file.executionIdHistory,
       }));
 
       return (res as any).status(200).json({

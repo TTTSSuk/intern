@@ -20,6 +20,15 @@ interface UploadedFile {
   originalName: string;
   status: string;
   createdAt: string;
+   folders?: {
+    subfolders?: any[];
+    length?: number;
+  };
+
+  clips?: {
+    video?: string;
+    finalVideo?: boolean;
+  }[];
 }
 
 interface User {
@@ -450,57 +459,148 @@ const handleSave = async (data?: {
   </section>
 )}
 
-
-        {/* Tab 3: Uploaded Files */}
-        {activeTab === 3 && (
-  <section className="bg-white rounded-lg shadow-lg p-8 max-w-4xl mx-auto">
-    <h2 className="text-2xl font-semibold mb-6 text-gray-800">ไฟล์ / วิดิโอที่อัปโหลด</h2>
-    {user.uploadedFiles && user.uploadedFiles.length > 0 ? (
-      <>
-        <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
-            <thead className="bg-indigo-50">
-              <tr>
-                <th className="px-4 py-3 font-semibold text-indigo-700 uppercase tracking-wide">ชื่อไฟล์</th>
-                <th className="px-4 py-3 font-semibold text-indigo-700 uppercase tracking-wide">วันที่อัปโหลด</th>
-                <th className="px-4 py-3 font-semibold text-indigo-700 uppercase tracking-wide">สถานะ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
-              {user.uploadedFiles.map((file) => (
-                <tr
-                  key={file._id}
-                  className="hover:bg-indigo-50 transition-colors duration-200 cursor-pointer"
-                  onClick={() => alert(`เปิดดูไฟล์: ${file.originalName}`)} // เพิ่ม action ตัวอย่าง
-                >
-                  <td className="px-4 py-3 text-gray-900 font-medium">{file.originalName}</td>
-                  <td className="px-4 py-3 text-gray-600">{formatDateTime(new Date(file.createdAt))}</td>
-                  <td className={`px-4 py-3 font-semibold ${
-                    file.status.toLowerCase() === "complete"
-                      ? "text-green-600"
-                      : file.status.toLowerCase() === "pending"
-                      ? "text-yellow-600"
-                      : "text-red-600"
-                  }`}>
-                    {file.status}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    {/* Tab 3: Uploaded Files */}
+{activeTab === 3 && (
+  <section className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl shadow-lg p-8 max-w-6xl mx-auto">
+    <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+          <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
         </div>
-        {/* <button
-          onClick={() => router.push(`/admin/user/${user.userId}/files`)}
-          className="mt-6 w-full md:w-auto px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-shadow shadow-md"
-        >
-          ดูไฟล์ทั้งหมดของผู้ใช้คนนี้
-        </button> */}
-      </>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">ไฟล์ที่อัปโหลด</h2>
+          {user.uploadedFiles?.length > 0 && (
+            <p className="text-sm text-gray-500">จัดการไฟล์วิดีโอทั้งหมด {user.uploadedFiles.length} ไฟล์</p>
+          )}
+        </div>
+      </div>
+    </div>
+
+    {user.uploadedFiles?.length > 0 ? (
+      <div className="grid grid-cols-1 gap-4">
+        {user.uploadedFiles.map((file) => {
+          const folderCount = file.folders?.subfolders?.length || file.folders?.length || 0;
+          const clipCount = file.clips?.length || 0;
+          const hasFinal = !!file.clips?.find((c) => c.finalVideo);
+          const status = file.status.toLowerCase();
+
+          const statusColor =
+            status.includes("completed")
+              ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+              : status.includes("done")
+              ? "bg-gradient-to-r from-sky-500 to-blue-500 text-white"
+              : status.includes("error") || status.includes("failed")
+              ? "bg-gradient-to-r from-rose-500 to-red-500 text-white"
+              : "bg-gradient-to-r from-gray-300 to-gray-400 text-gray-700";
+
+          return (
+            <div
+              key={file._id}
+              className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden group"
+            >
+              <div className="p-6 flex justify-between items-start gap-4">
+                {/* Left: Icon + File Info */}
+                <div className="flex items-start gap-4 flex-1 min-w-0">
+                  <div className="w-14 h-14 flex-shrink-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <svg
+                      className="w-7 h-7 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-bold text-gray-900 truncate mb-1 group-hover:text-indigo-600 transition-colors">
+                      {file.originalName}
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <span>{formatDateTime(new Date(file.createdAt))}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Status + Stats */}
+<div className="flex flex-col items-end gap-2 min-w-[120px]">
+  {/* Status */}
+  <span
+    className={`px-4 py-1.5 rounded-full text-xs font-bold shadow-sm ${statusColor}`}
+  >
+    {file.status}
+  </span>
+
+  {/* Stats: row เดียว */}
+  <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
+    <span className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-lg">
+      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+      </svg>
+      {folderCount} โฟลเดอร์
+    </span>
+
+    <span className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 rounded-lg">
+      <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+      </svg>
+      {clipCount} คลิป
+    </span>
+
+    {hasFinal && (
+      <span className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 rounded-lg">
+        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Final
+      </span>
+    )}
+  </div>
+</div>
+
+              </div>
+            </div>
+          );
+        })}
+      </div>
     ) : (
-      <p className="text-center text-gray-500 italic py-12">ยังไม่มีไฟล์ที่อัปโหลด</p>
+      <div className="text-center py-20 bg-white rounded-xl shadow-md">
+        <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg
+            className="w-12 h-12 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+            />
+          </svg>
+        </div>
+        <h3 className="text-xl font-bold text-gray-700 mb-2">ยังไม่มีไฟล์ที่อัปโหลด</h3>
+        <p className="text-sm text-gray-500">ผู้ใช้คนนี้ยังไม่ได้อัปโหลดไฟล์วิดีโอใด ๆ</p>
+      </div>
     )}
   </section>
-        )}
+)}
 
       </div>
     </AdminLayout>

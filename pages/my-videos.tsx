@@ -292,6 +292,8 @@ export default function HistoryVideos() {
   const [dateTo, setDateTo] = useState<string>(""); // วันที่สิ้นสุด
   const [statusFilter, setStatusFilter] = useState<string>("all"); // สถานะ (all, completed, running, error)
   const [showFilterModal, setShowFilterModal] = useState<boolean>(false); // Modal สำหรับตัวกรอง
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 9;
   const [selectedClip, setSelectedClip] = useState<{
     index: number;
     clip: Clip;
@@ -349,6 +351,17 @@ const closeVideoDetail = () => {
 
     return matchesSearchTerm && matchesDateFrom && matchesDateTo && matchesStatus;
   });
+
+  // คำนวณข้อมูลสำหรับ Pagination
+  const totalPages = Math.ceil(filteredVideos.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentVideos = filteredVideos.slice(startIndex, endIndex);
+
+  // Reset หน้าเมื่อมีการกรอง
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, dateFrom, dateTo, statusFilter]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -649,8 +662,78 @@ const closeVideoDetail = () => {
           </div>
         )}
 
+        {/* Pagination - Top */}
+        {totalPages > 1 && (
+  <div className="mb-4 flex items-center justify-between">
+    <div className="text-xs text-slate-600">
+      แสดง {startIndex + 1}-{Math.min(endIndex, filteredVideos.length)} จาก {filteredVideos.length} วิดีโอ
+    </div>
+    
+    <div className="flex items-center gap-1.5">
+      <button
+        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+        disabled={currentPage === 1}
+        className={`px-2 py-1.5 rounded-lg transition-all ${
+          currentPage === 1
+            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+            : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+        }`}
+      >
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+
+      <div className="flex items-center gap-0.5">
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+          if (
+            page === 1 ||
+            page === totalPages ||
+            (page >= currentPage - 1 && page <= currentPage + 1)
+          ) {
+            return (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`w-7 h-7 rounded-lg text-xs transition-all ${
+                  currentPage === page
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                {page}
+              </button>
+            );
+          } else if (page === currentPage - 2 || page === currentPage + 2) {
+            return (
+              <span key={page} className="px-0.5 text-slate-400 text-xs">
+                ...
+              </span>
+            );
+          }
+          return null;
+        })}
+      </div>
+
+      <button
+        onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+        disabled={currentPage === totalPages}
+        className={`px-2 py-1.5 rounded-lg transition-all ${
+          currentPage === totalPages
+            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+            : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+        }`}
+      >
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+  </div>
+)}
+
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredVideos.map((video) => {
+          {currentVideos.map((video) => {
             const videoId = video._id.$oid;
             const clipCount = video.clips?.filter(c => c.video || c.finalVideo).length || 0;
             
@@ -824,8 +907,9 @@ const closeVideoDetail = () => {
       if (e.target === e.currentTarget) closeVideoDetail();
     }}
   >
-   <div
-  className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar"
+    <div
+  className="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto custom-scrollbar"
+   
   onClick={(e) => e.stopPropagation()}
   style={{
     scrollbarWidth: 'thin',
