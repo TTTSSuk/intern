@@ -43,6 +43,9 @@ interface User {
   lastActive: string;
   tokenHistory: TokenHistoryItem[];
   uploadedFiles: UploadedFile[];
+  tokenBalance?: number;
+  totalVideos?: number;
+  totalTokensUsed?: number;
 }
 
 export default function UserDetailPage() {
@@ -104,6 +107,7 @@ function formatDateTime(date: Date): string {
       try {
         const res = await fetch(`/api/admin/user?userId=${userId}`);
         const data = await res.json();
+        
         if (data.success) {
           setUser(data.user);
           setIsActive(data.user.isActive);
@@ -211,55 +215,80 @@ const handleSave = async (data?: {
           </nav>
         </div>
 
+
         {/* Tab 0: ข้อมูลทั่วไป */}
-        {activeTab === 0 && (
-          <section className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
-              <div className="flex-shrink-0">
-                {user.avatarUrl ? (
-                  <img
-                    src={user.avatarUrl}
-                    alt={`${user.name} avatar`}
-                    className="w-32 h-32 rounded-full object-cover border border-gray-300"
-                  />
-                ) : (
-                  <div className="w-32 h-32 rounded-full bg-gray-300 flex items-center justify-center text-4xl font-bold text-gray-600">
-                    {user.name.charAt(0)}
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 space-y-2">
-                <h1 className="text-3xl font-semibold text-gray-900">{user.name}</h1>
-                <p>
-                  <strong>User ID: </strong>
-                  <span>{user.userId}</span>
-                </p>
-                <p>
-                  <strong>สถานะออนไลน์: </strong>
-                  <span className={isUserOnline(user.lastActive) ? "text-green-600" : "text-gray-500"}>
-                    {isUserOnline(user.lastActive) ? "ออนไลน์" : "ออฟไลน์"}
-                  </span>
-                </p>
-                <p>
-                  <strong>สถานะใช้งาน: </strong>
-                  <span className={isActive ? "text-green-600" : "text-red-600"}>
-                    {isActive ? "เปิดใช้งาน" : "ปิดใช้งาน"}
-                  </span>
-                </p>
-                <p>
-                  <strong>สถานะระงับ: </strong>
-                  <span className={isSuspended ? "text-red-600" : "text-green-600"}>
-                    {isSuspended ? `ระงับ (${suspensionReason || "-"})` : "ปกติ"}
-                  </span>
-                </p>
-                <p>
-                  <strong>เวลาล่าสุด: </strong>{user.lastActive ? formatDateTime(new Date(user.lastActive)) : "ไม่มีข้อมูล"}
-                  {/* <strong>เวลาล่าสุด: </strong> {user.lastActive ?? "ไม่มีข้อมูล"} */}
-                </p>
-              </div>
-            </div>
-          </section>
+       {activeTab === 0 && (
+  <section className="bg-white rounded-lg shadow-md p-6">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+      {/* ซ้ายสุด: Avatar */}
+      <div className="md:col-span-2 flex justify-center md:justify-start">
+        {user.avatarUrl ? (
+          <img
+            src={user.avatarUrl}
+            alt={`${user.name} avatar`}
+            className="w-24 h-24 rounded-full object-cover border border-gray-300"
+          />
+        ) : (
+          <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-600">
+            {user.name.charAt(0)}
+          </div>
         )}
+      </div>
+
+      {/* ตรงกลาง: ข้อมูลเนื้อหา */}
+      <div className="md:col-span-5 space-y-3">
+        <h1 className="text-2xl font-semibold text-gray-900">{user.name}</h1>
+        <div className="space-y-2 text-sm">
+          <p>
+            <strong>User ID: </strong>
+            <span>{user.userId}</span>
+          </p>
+          <p>
+            <strong>สถานะออนไลน์: </strong>
+            <span className={isUserOnline(user.lastActive) ? "text-green-600" : "text-gray-500"}>
+              {isUserOnline(user.lastActive) ? "ออนไลน์" : "ออฟไลน์"}
+            </span>
+          </p>
+          <p>
+            <strong>สถานะใช้งาน: </strong>
+            <span className={isActive ? "text-green-600" : "text-red-600"}>
+              {isActive ? "เปิดใช้งาน" : "ปิดใช้งาน"}
+            </span>
+          </p>
+          <p>
+            <strong>สถานะระงับ: </strong>
+            <span className={isSuspended ? "text-red-600" : "text-green-600"}>
+              {isSuspended ? `ระงับ (${suspensionReason || "-"})` : "ปกติ"}
+            </span>
+          </p>
+          <p>
+            <strong>เวลาล่าสุด: </strong>
+            {user.lastActive ? formatDateTime(new Date(user.lastActive)) : "ไม่มีข้อมูล"}
+          </p>
+        </div>
+      </div>
+
+      {/* ขวาสุด: สถิติ */}
+      <div className="md:col-span-5">
+        <h2 className="text-xl font-semibold text-gray-800 mb-3">สถิติการใช้งาน</h2>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-blue-50 rounded-lg p-3 text-center">
+            <p className="text-xl font-bold text-blue-600">{user.tokenBalance?.toLocaleString() || 0}</p>
+            <p className="text-xs text-gray-600 mt-1">Token คงเหลือ</p>
+          </div>
+          <div className="bg-purple-50 rounded-lg p-3 text-center">
+            <p className="text-xl font-bold text-purple-600">{user.totalVideos || 0}</p>
+            <p className="text-xs text-gray-600 mt-1">วิดีโอที่สร้าง</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-3 text-center">
+            <p className="text-xl font-bold text-green-600">{user.totalTokensUsed?.toLocaleString() || 0}</p>
+            <p className="text-xs text-gray-600 mt-1">Token ที่ใช้ไป</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+)}
 
         {/* Tab 1: Token & History */}
         {activeTab === 1 && (
@@ -472,7 +501,7 @@ const handleSave = async (data?: {
       )}
     </div>
   </section>
-)}
+        )}
 
     {/* Tab 3: Uploaded Files */}
 {activeTab === 3 && (

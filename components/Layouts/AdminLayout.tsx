@@ -7,7 +7,7 @@ import {
   AiOutlineHome,
   AiOutlineUserAdd,
   AiOutlineUsergroupAdd,
-  AiOutlineSetting,
+  // AiOutlineSetting,
   AiOutlineLogout,
   AiOutlineArrowLeft,
 } from "react-icons/ai";
@@ -36,12 +36,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   const getPageTitle = () => {
-    if (router.pathname === "/admin/dashboard") return "Admin Dashboard";
+    // if (router.pathname === "/admin/dashboard") return "Admin Dashboard";
     if (router.pathname === "/admin/manage-users") return "Manage Users";
     if (router.pathname === "/admin/add-user") return "Add Users";
-    if (router.pathname === "/admin/settings") return "Settings";
+    // if (router.pathname === "/admin/settings") return "Settings";
     if (router.pathname === "/admin/user/[userId]") return "Manage Users";
-    return "Admin Dashboard";
+    // return "Admin Dashboard";
   };
 
   const showBackButton = router.pathname !== "/admin/dashboard";
@@ -101,7 +101,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <AiOutlineUsergroupAdd size={20} />
             <span>Manage Users</span>
           </button>
-          <button
+          {/* <button
             onClick={() => alert("กำลังพัฒนา")}
             className={`flex items-center space-x-3 px-4 py-3 rounded-md font-semibold transition-colors
               ${isActive("/admin/settings")
@@ -111,7 +111,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           >
             <AiOutlineSetting size={20} />
             <span>Settings</span>
-          </button>
+          </button> */}
           {/* ชื่อแอดมิน */}
           <div className="flex items-center space-x-3 mt-6 mb-4 text-gray-700 font-medium">
             <AiOutlineUser size={20} />
