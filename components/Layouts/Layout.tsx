@@ -98,7 +98,8 @@ export default function Layout({
     <div className={`${backgroundColor} min-h-screen flex flex-col`}>
       {/* Header */}
       <header className="fixed top-0 w-full bg-gray-50 shadow-md z-50 h-16">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-full">
+        {/* <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-full"> */}
+           <div className="max-w-7xl 2xl:max-w-full mx-auto flex items-center justify-between px-6 2xl:px-12 h-full"> 
           {/* Logo */}
           <div onClick={() => router.push("/dashboard")} className="cursor-pointer select-none flex items-center">
             <img
@@ -218,7 +219,8 @@ export default function Layout({
         {/* Progress Bar - Sticky */}
         {steps && currentStep && (
           <div className="sticky top-16 bg-gray-50 z-40 border-b border-gray-200 py-2">
-            <div className="max-w-7xl mx-auto px-6">
+            {/* <div className="max-w-7xl mx-auto px-6"> */}
+              <div className="max-w-7xl 2xl:max-w-full mx-auto px-6 2xl:px-12">
               <div className="relative w-full">
                 {/* Connection Lines */}
                 <div className="absolute top-5 left-0 right-0 flex items-center px-5">
@@ -313,7 +315,8 @@ export default function Layout({
         )}
 
         {/* เนื้อหาของหน้า */}
-        <div className="flex-1 max-w-7xl mx-auto px-6 pb-8 w-full">
+        {/* <div className="flex-1 max-w-7xl mx-auto px-6 pb-8 w-full"> */}
+          <div className="flex-1 max-w-7xl 2xl:max-w-full mx-auto px-6 2xl:px-12 pb-8 w-full">
           {children}
         </div>
       </main>
