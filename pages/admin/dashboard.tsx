@@ -242,7 +242,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <span className="text-xs text-gray-400">
-                    {new Date(user.lastActive).toLocaleDateString('th-TH', { 
+                    {new Date(user.lastActive).toLocaleDateString('en-US', { 
                       month: 'short', 
                       day: 'numeric',
                       hour: '2-digit',

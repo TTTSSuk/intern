@@ -10,12 +10,12 @@ interface Folder {
   subfolders?: Folder[];
 }
 
-interface ExtractedFile {
+  interface ExtractedFile {
   _id: string;
   userId: string;
   originalName: string;
   extractPath: string;
-  status: 'pending' | 'processing' | 'done' | 'error';
+  status: 'pending' | 'processing' | 'done' | 'error' | 'completed' | 'running';
   createdAt: string;
   folders?: Folder[];
   videoCreated?: boolean;
@@ -34,7 +34,6 @@ export default function ListFile() {
   const [error, setError] = useState<string | null>(null);
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
-  // const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const steps = ['อัปโหลดไฟล์', 'รายการไฟล์', 'สร้างวิดีโอ'];
   const { currentStep, setCurrentStep } = useStep();
   
@@ -52,61 +51,6 @@ export default function ListFile() {
     return `${datePart} ${timePart}`;
   }
 
-  // ฟังก์ชันตรวจสอบโครงสร้างโฟลเดอร์
-  // function validateFolderStructure(folders?: Folder[]): ValidationError[] {
-  //   const errors: ValidationError[] = [];
-    
-  //   if (!folders || folders.length === 0) {
-  //     return errors;
-  //   }
-
-  //   // ตรวจสอบ subfolders ทั้งหมด
-  //   folders.forEach(folder => {
-  //     if (folder.subfolders && folder.subfolders.length > 0) {
-  //       folder.subfolders.forEach(subfolder => {
-  //         const folderErrors: string[] = [];
-          
-  //         // ตรวจสอบว่ามีไฟล์หรือไม่
-  //         if (!subfolder.files || subfolder.files.length === 0) {
-  //           folderErrors.push('ไม่มีไฟล์ในโฟลเดอร์');
-  //         } else {
-  //           const files = subfolder.files.map(f => f.toLowerCase());
-            
-  //           // ตรวจสอบว่ามี prompt.txt
-  //           const hasPrompt = files.includes('prompt.txt');
-  //           if (!hasPrompt) {
-  //             folderErrors.push('ไม่พบไฟล์ prompt.txt');
-  //           }
-            
-  //           // ตรวจสอบว่ามี voice.txt
-  //           const hasVoice = files.includes('voice.txt');
-  //           if (!hasVoice) {
-  //             folderErrors.push('ไม่พบไฟล์ voice.txt');
-  //           }
-            
-  //           // ตรวจสอบว่ามีไฟล์รูปภาพ
-  //           const imageExtensions = ['.png', '.jpg', '.jpeg'];
-  //           const hasImage = files.some(file => 
-  //             imageExtensions.some(ext => file.endsWith(ext))
-  //           );
-  //           if (!hasImage) {
-  //             folderErrors.push('ไม่พบไฟล์รูปภาพ (.png, .jpg, .jpeg)');
-  //           }
-  //         }
-          
-  //         if (folderErrors.length > 0) {
-  //           errors.push({
-  //             folderName: subfolder.name,
-  //             errors: folderErrors
-  //           });
-  //         }
-  //       });
-  //     }
-  //   });
-    
-  //   return errors;
-  // }
-
   // ฟังก์ชันจัดการเมื่อกด Next
   const handleNext = () => {
     if (!selectedFileId) {
@@ -120,15 +64,6 @@ export default function ListFile() {
       return;
     }
 
-    // ตรวจสอบโครงสร้างโฟลเดอร์
-    // const errors = validateFolderStructure(selectedFile.folders);
-    
-    // if (errors.length > 0) {
-    //   setValidationErrors(errors);
-    //   return;
-    // }
-
-    // ถ้าไม่มี error ให้ไปหน้า create-video
     setCurrentStep(3);
     router.push(`/create-video?id=${selectedFileId}`);
   };
@@ -149,7 +84,14 @@ export default function ListFile() {
         const res = await fetch(`/api/list-files?userId=${encodeURIComponent(userId)}`);
         if (!res.ok) throw new Error('เกิดข้อผิดพลาดในการโหลดข้อมูล');
         const data = await res.json();
-        setFiles(data.files);
+        
+        // ✅ กรองออกไฟล์ที่กำลัง processing หรือ pending
+        const filteredFiles = data.files.filter((file: ExtractedFile) => {
+          const status = file.status.toLowerCase();
+          return status !== 'running' && status !== 'processing' && status !== 'pending';
+        });
+        
+        setFiles(filteredFiles);
       } catch (err) {
         setError((err as Error).message);
       } finally {
@@ -351,7 +293,7 @@ export default function ListFile() {
                     </div>
                   </div>
 
-                  {/* File Structure */}
+                    {/* File Structure */}
                   <div className="bg-slate-50 rounded-xl p-4">
                     <h4 className="font-semibold text-slate-700 mb-3 flex items-center justify-between space-x-2">
                       <span>โครงสร้างไฟล์</span>
