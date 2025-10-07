@@ -464,6 +464,38 @@ async function confirmStartVideo() {
         <p className="text-sm">{status?.updatedAt ? formatDateTime(new Date(status.updatedAt)) : ''}</p>
       </div>
     </div>
+    
+    {/* CHECK TOKEN ERROR POPUP */}
+{error && (
+  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 p-4">
+    <div className="bg-white border-2 border-red-200 rounded-2xl p-6 max-w-lg w-full shadow-2xl">
+      {/* Header */}
+      <div className="flex items-center space-x-4 mb-4">
+        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-white text-2xl">⚠️</span>
+        </div>
+        <div>
+          <h3 className="font-semibold text-red-800 text-lg">Token ไม่เพียงพอ</h3>
+          <p className="text-red-600 text-sm mt-1">
+            {error.includes('Insufficient tokens') 
+              ? 'คุณมีโทเคนไม่พอสำหรับสร้างวิดีโอนี้ กรุณาเติมโทเคน หรือลดความยาววิดีโอ' 
+              : error}
+          </p>
+        </div>
+      </div>
+      
+      {/* Close Button */}
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={() => setError(null)}
+          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium"
+        >
+          ตกลง
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
     {/* Queue Info Inline */}
     {status.status === 'queued' && status.queuePosition && (
