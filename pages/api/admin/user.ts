@@ -55,11 +55,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .sort({ createdAt: -1 })
         .toArray();
 
-      // ✅ นับจำนวนวิดีโอที่สร้างเสร็จแล้ว
-      const totalVideos = uploadedFiles.filter(file => {
-        const status = file.status?.toLowerCase() || '';
-        return status.includes('completed') || status.includes('done');
-      }).length;
+        // ✅ นับทั้ง clips ที่มี video หรือ finalVideo (เช็คว่ามีค่าหรือไม่)
+const totalVideos = uploadedFiles.reduce((count, file) => {
+  const clipsWithVideo = file.clips?.filter((clip: any) => 
+    clip.video || clip.finalVideo  // เช็คว่ามีค่า (ไม่ว่าจะเป็น string อะไรก็ตาม)
+  ) || [];
+  return count + clipsWithVideo.length;
+}, 0);
 
       // แปลง ObjectId เป็น string และเพิ่ม fields ที่ต้องการ
       const filesFormatted = uploadedFiles.map(file => ({
