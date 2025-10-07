@@ -63,19 +63,55 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    if (['completed', 'succeeded', 'error'].includes(doc.status) && doc.executionIdHistory) {
-      return (res as any).status(200).json({
-        status: doc.status,
-        finished: true,
-        executionId: execId,
-        documentId,
-        clips: doc.clips || [],
-        folders: doc.folders || [],
-        originalName: doc.originalName,        // 🔥 เพิ่ม
-        tokensReserved: doc.tokensReserved,    // 🔥 เพิ่ม
-        createdAt: doc.createdAt  
-      });
-    }
+    // ใน status-wf.ts ประมาณบรรทัด 138-146
+// ✅ ถ้างานเสร็จแล้วและมี executionIdHistory ให้ return ทันที
+if (['completed', 'succeeded', 'error'].includes(doc.status) && doc.executionIdHistory) {
+  console.log(`✅ Job already finalized with executionIdHistory`);
+  return (res as any).status(200).json({
+    status: doc.status,
+    finished: true,
+    executionId: doc.executionId || execId,
+    documentId,
+    clips: doc.clips || [],
+    folders: doc.folders || [],
+    originalName: doc.originalName,
+    tokensReserved: doc.tokensReserved,
+    createdAt: doc.createdAt
+  });
+}
+
+// ✅ ถ้ายังไม่มี executionId ให้ return status queued/processing
+if (!execId) {
+  console.log(`⏳ Job has no executionId yet - Status: ${doc.status}`);
+  return (res as any).status(200).json({ 
+    status: doc.status || 'queued',
+    finished: false, 
+    message: `Job is ${doc.status || 'queued'}`,
+    queuePosition: doc.queuePosition,
+    clips: doc.clips || [],
+    originalName: doc.originalName,
+    tokensReserved: doc.tokensReserved,
+    createdAt: doc.createdAt,
+    folders: doc.folders  
+  });
+}
+
+// ✅ เพิ่ม condition: ถ้า status เป็น completed แต่ยังไม่มี executionIdHistory
+// ให้ไปเรียก N8N เพื่อสร้าง executionIdHistory (fall through ไปยัง code ด้านล่าง)
+    // if (['completed', 'succeeded', 'error'].includes(doc.status) && doc.executionIdHistory) {
+    //   console.log(`✅ Job already finalized with executionIdHistory`);
+    //   return (res as any).status(200).json({
+    //     status: doc.status,
+    //     finished: true,
+    //     executionId: execId,
+    //     documentId,
+    //     clips: doc.clips || [],
+    //     folders: doc.folders || [],
+    //     originalName: doc.originalName,        // 🔥 เพิ่ม
+    //     tokensReserved: doc.tokensReserved,    // 🔥 เพิ่ม
+    //     createdAt: doc.createdAt  
+    //   });
+    // }
 
     const n8nUrl = `${apiBase}/executions/${execId}`;
     console.log(`🌐 Calling N8N API: ${n8nUrl}`);
