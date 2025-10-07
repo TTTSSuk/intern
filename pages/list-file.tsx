@@ -231,7 +231,16 @@ export default function ListFile() {
 
       <div className="max-w-6xl mx-auto">
           {/* Files Grid */}
-          <div className="space-y-6">
+           <div className="space-y-3">
+            {files.map((file) => (
+              <div
+                key={file._id}
+                className={`bg-white rounded-lg shadow hover:shadow-md transition-all duration-300 overflow-hidden border-2 ${
+                  selectedFileId === file._id ? 'border-blue-500 ring-2 ring-blue-100' : 'border-transparent'
+                }`}
+              >
+                <div className="p-4">
+          {/* <div className="space-y-6">
             {files.map((file) => (
               <div
                 key={file._id}
@@ -239,7 +248,7 @@ export default function ListFile() {
                   selectedFileId === file._id ? 'border-blue-500 ring-4 ring-blue-100' : 'border-transparent'
                 }`}
               >
-                <div className="p-6">
+                <div className="p-6"> */}
                   {/* File Header */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start space-x-4 flex-1">

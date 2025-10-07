@@ -3,12 +3,13 @@ import { useRouter } from "next/router";
 import { useState, useRef, useEffect } from "react";
 import { AiOutlineArrowLeft } from "react-icons/ai";
 import StepProgress from "@/components/Layouts/StepProgress";
+import { useHeartbeat } from "@/hooks/useHeartbeat";
 
 interface UserProfile {
   userId: string;
   name: string;
   tokens: number;
-  reservedTokens?: number; // เพิ่ม reserved tokens
+  reservedTokens?: number;
   avatarUrl?: string;
 }
 
@@ -40,6 +41,8 @@ export default function Layout({
   const [isClient, setIsClient] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  useHeartbeat();
+
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -54,27 +57,30 @@ export default function Layout({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // ✅ อัปเดตทั้ง tokens และ reservedTokens พร้อมกัน
   useEffect(() => {
-  if (!user?.userId) return;
-  
-  const loadReservedTokens = () => {
-    fetch(`/api/users/token-history?userId=${user.userId}`)
-      .then(res => res.json())
-      .then(data => {
+    if (!user?.userId) return;
+    
+    const loadTokenData = async () => {
+      try {
+        const res = await fetch(`/api/users/token-history?userId=${user.userId}`);
+        const data = await res.json();
+        
         setUser(prev => prev ? {
           ...prev,
+          tokens: data.tokens || 0,
           reservedTokens: data.reservedTokens || 0
         } : prev);
-      })
-      .catch(console.error);
-  };
+      } catch (error) {
+        console.error('Error loading token data:', error);
+      }
+    };
 
-  loadReservedTokens(); // โหลดทันที
-
-  const interval = setInterval(loadReservedTokens, 5000);
-
-  return () => clearInterval(interval);
-}, [user?.userId, setUser]); // เพิ่ม setUser
+    loadTokenData();
+    // ✅ ลดเวลา interval เหลือ 2 วินาที เพื่อให้อัปเดตเร็วขึ้น
+    const interval = setInterval(loadTokenData, 2000);
+    return () => clearInterval(interval);
+  }, [user?.userId, setUser]);
 
   const handleEditProfile = () => {
     setDropdownOpen(false);
@@ -98,8 +104,7 @@ export default function Layout({
     <div className={`${backgroundColor} min-h-screen flex flex-col`}>
       {/* Header */}
       <header className="fixed top-0 w-full bg-gray-50 shadow-md z-50 h-16">
-        {/* <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-full"> */}
-           <div className="max-w-7xl 2xl:max-w-full mx-auto flex items-center justify-between px-6 2xl:px-12 h-full"> 
+        <div className="max-w-7xl 2xl:max-w-full mx-auto flex items-center justify-between px-6 2xl:px-12 h-full">
           {/* Logo */}
           <div onClick={() => router.push("/dashboard")} className="cursor-pointer select-none flex items-center">
             <img
@@ -129,21 +134,21 @@ export default function Layout({
           <div className="flex items-center space-x-4" ref={dropdownRef}>
             {/* Token Display with Reserved */}
             <button
-  onClick={() => router.push("/TokenHistory")}
-  className="text-gray-700 font-semibold hover:text-indigo-600 transition flex items-center gap-2"
-  title="ดูประวัติการใช้ Token"
->
-  <span>Token:</span>
-  <span className="text-indigo-600">{user?.tokens ?? 0}</span>
-  {(user?.reservedTokens ?? 0) > 0 && user && (
-    <span className="text-amber-600 text-sm flex items-center gap-1">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-      </svg>
-      ({user.reservedTokens})
-    </span>
-  )}
-</button>
+              onClick={() => router.push("/TokenHistory")}
+              className="text-gray-700 font-semibold hover:text-indigo-600 transition flex items-center gap-2"
+              title="ดูประวัติการใช้ Token"
+            >
+              <span>Token:</span>
+              <span className="text-indigo-600">{user?.tokens ?? 0}</span>
+              {(user?.reservedTokens ?? 0) > 0 && user && (
+                <span className="text-amber-600 text-sm flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                  </svg>
+                  ({user.reservedTokens})
+                </span>
+              )}
+            </button>
 
             <div className="relative">
               <button
@@ -219,8 +224,7 @@ export default function Layout({
         {/* Progress Bar - Sticky */}
         {steps && currentStep && (
           <div className="sticky top-16 bg-gray-50 z-40 border-b border-gray-200 py-2">
-            {/* <div className="max-w-7xl mx-auto px-6"> */}
-              <div className="max-w-7xl 2xl:max-w-full mx-auto px-6 2xl:px-12">
+            <div className="max-w-7xl 2xl:max-w-full mx-auto px-6 2xl:px-12">
               <div className="relative w-full">
                 {/* Connection Lines */}
                 <div className="absolute top-5 left-0 right-0 flex items-center px-5">
@@ -315,8 +319,7 @@ export default function Layout({
         )}
 
         {/* เนื้อหาของหน้า */}
-        {/* <div className="flex-1 max-w-7xl mx-auto px-6 pb-8 w-full"> */}
-          <div className="flex-1 max-w-7xl 2xl:max-w-full mx-auto px-6 2xl:px-12 pb-8 w-full">
+        <div className="flex-1 max-w-7xl 2xl:max-w-full mx-auto px-6 2xl:px-12 pb-8 w-full">
           {children}
         </div>
       </main>
