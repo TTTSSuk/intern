@@ -442,7 +442,6 @@ const handleSave = async (data?: {
   </section>
 )}
 
-
         {/* Tab 2: Ban */}
 {activeTab === 2 && (
   <section className="bg-white rounded-xl shadow-lg p-6 max-w-5xl mx-auto">
@@ -599,9 +598,9 @@ const handleSave = async (data?: {
 )}
 
         {/* Tab 3: Uploaded Files */}
-        {activeTab === 3 && (
+{activeTab === 3 && (
   <section className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl shadow-lg p-8 max-w-6xl mx-auto">
-    <div className="flex items-center justify-between mb-8">
+    <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
           <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -609,14 +608,13 @@ const handleSave = async (data?: {
           </svg>
         </div>
         <div className="leading-tight">
-  <h2 className="text-2xl font-bold text-gray-800">ไฟล์ที่อัปโหลด</h2>
-  {user.uploadedFiles?.length > 0 && (
-    <p className="text-sm text-gray-500">
-      จัดการไฟล์วิดีโอทั้งหมด {user.uploadedFiles.length} ไฟล์
-    </p>
-  )}
-</div>
-
+          <h2 className="text-2xl font-bold text-gray-800">ไฟล์ที่อัปโหลด</h2>
+          {user.uploadedFiles?.length > 0 && (
+            <p className="text-sm text-gray-500">
+              จัดการไฟล์วิดีโอทั้งหมด {user.uploadedFiles.length} ไฟล์
+            </p>
+          )}
+        </div>
       </div>
     </div>
 
@@ -769,8 +767,46 @@ const handleSave = async (data?: {
         <p className="text-sm text-gray-500">ผู้ใช้คนนี้ยังไม่ได้อัปโหลดไฟล์วิดีโอใด ๆ</p>
       </div>
     )}
+
+    {/* Status Legend - คำอธิบายสถานะ (ย้ายมาล่างสุด) */}
+    {user.uploadedFiles?.length > 0 && (
+      <div className="mt-6 bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <h3 className="text-xs font-semibold text-gray-600 uppercase mb-3 flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          คำอธิบายสถานะ
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+          <div className="flex items-start gap-2">
+            <span className="mt-0.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-sky-500 to-blue-500 text-white shadow-sm">
+              Done
+            </span>
+            <p className="text-gray-600 text-xs leading-relaxed">
+              ไฟล์ที่อัปโหลดแล้ว<br/>แต่ยังไม่ได้ประมวลผล
+            </p>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="mt-0.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm">
+              Completed
+            </span>
+            <p className="text-gray-600 text-xs leading-relaxed">
+              ประมวลผลเสร็จสมบูรณ์<br/>วิดีโอพร้อมใช้งาน
+            </p>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="mt-0.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-rose-500 to-red-500 text-white shadow-sm">
+              Error
+            </span>
+            <p className="text-gray-600 text-xs leading-relaxed">
+              เกิดข้อผิดพลาด<br/>ระหว่างการประมวลผล
+            </p>
+          </div>
+        </div>
+      </div>
+    )}
   </section>
-        )}
+)}
       </div>
     </AdminLayout>
   );
