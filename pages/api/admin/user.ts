@@ -1,5 +1,4 @@
 // pages/api/admin/user.ts
-// pages/api/admin/user.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import clientPromise from "@/lib/mongodb";
 

@@ -1,3 +1,4 @@
+//pages\api\admin\users.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import clientPromise from "@/lib/mongodb";
 
@@ -7,7 +8,6 @@ function getThailandDate(): Date {
   const thailandTime = new Date(utc + 7 * 60 * 60 * 1000); // บวก 7 ชั่วโมง
   return thailandTime; // เป็น Date object
 }
-
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const client = await clientPromise;

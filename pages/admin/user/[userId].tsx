@@ -217,7 +217,7 @@ const handleSave = async (data?: {
 
 
         {/* Tab 0: ข้อมูลทั่วไป */}
-       {activeTab === 0 && (
+        {activeTab === 0 && (
   <section className="bg-white rounded-lg shadow-md p-6">
     <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
       {/* ซ้ายสุด: Avatar */}
@@ -288,223 +288,318 @@ const handleSave = async (data?: {
       </div>
     </div>
   </section>
-)}
+        )}
 
         {/* Tab 1: Token & History */}
-        {activeTab === 1 && (
-  <section className="bg-white rounded-lg shadow-lg p-8 max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10">
-    {/* ฝั่งซ้าย: Token ปัจจุบัน + เพิ่ม Token */}
-    <div className="flex flex-col">
-      <h2 className="text-2xl font-semibold mb-6 text-gray-800">Token & ประวัติการใช้ Token</h2>
+{activeTab === 1 && (
+  <section className="bg-white rounded-xl shadow-lg p-6 max-w-5xl mx-auto">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      {/* ฝั่งซ้าย: การจัดการ Token */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">จัดการ Token</h2>
 
-      {/* Token ปัจจุบันเด่น ๆ */}
-      <div className="mb-6 p-6 bg-indigo-600 rounded-lg shadow-md text-white flex items-center space-x-4">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-10 w-10"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 8c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2zM12 2v2m0 16v2m8-10h2M2 12H4m15.364 6.364l1.414 1.414M4.222 4.222l1.414 1.414m12.728 0l-1.414 1.414M6.636 17.364l-1.414 1.414"
-          />
-        </svg>
-        <div>
-          <p className="text-lg font-semibold">Token ปัจจุบัน</p>
-          <p className="text-4xl font-extrabold">{user.tokens ?? 0}</p>
+        {/* Token ปัจจุบัน */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl p-6 shadow-lg">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-white opacity-10 rounded-full -mr-12 -mt-12"></div>
+          
+          <div className="relative">
+            <p className="text-white text-xs font-medium mb-1 uppercase tracking-wide opacity-75">
+              จำนวน Token ปัจจุบัน
+            </p>
+            <div className="flex items-baseline space-x-2">
+              <p className="text-white text-5xl font-bold">{user.tokens ?? 0}</p>
+              <span className="text-white text-lg font-medium opacity-75">Token</span>
+            </div>
+          </div>
+        </div>
+
+        {/* เพิ่ม Token */}
+        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+          <label htmlFor="tokensToAdd" className="block text-sm font-semibold text-gray-700 mb-2">
+            เพิ่ม Token
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="tokensToAdd"
+              type="number"
+              min={0}
+              value={tokensToAdd}
+              onChange={(e) => setTokensToAdd(Math.max(0, Number(e.target.value)))}
+              placeholder="จำนวน"
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+            <button
+              onClick={async (e) => {
+                e.preventDefault();
+
+                if (tokensToAdd <= 0) {
+                  alert("กรุณากรอกจำนวน Token ที่ต้องการเพิ่มมากกว่า 0");
+                  return;
+                }
+
+                await handleSave({
+                  tokens: (user.tokens ?? 0) + tokensToAdd,
+                });
+
+                alert(`เพิ่ม Token เรียบร้อย: +${tokensToAdd}`);
+
+                setTokensToAdd(0);
+                router.replace(router.asPath);
+              }}
+              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold px-6 py-2 rounded-lg shadow hover:shadow-lg transition-all transform hover:scale-105 active:scale-95"
+            >
+              เพิ่ม
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* เพิ่ม Token */}
-      <label htmlFor="tokensToAdd" className="block mb-2 font-medium text-gray-700">
-        เพิ่ม Token:
-      </label>
-      <input
-        id="tokensToAdd"
-        type="number"
-        min={0}
-        value={tokensToAdd}
-        onChange={(e) => setTokensToAdd(Math.max(0, Number(e.target.value)))}
-        className="w-32 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-      />
+      {/* ฝั่งขวา: ประวัติ Token */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold text-gray-800">ประวัติ Token</h3>
+          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+            {user.tokenHistory?.filter(t => t.change !== 0).length || 0} รายการ
+          </span>
+        </div>
 
-      <button
-        onClick={async (e) => {
-          e.preventDefault();
+        <div className="max-h-80 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+          {user.tokenHistory && user.tokenHistory.length > 0 ? (
+            user.tokenHistory
+              .filter(t => t.change !== 0)
+              .map((t, i) => {
+                const dateObj = dayjs(t.date).tz('Asia/Bangkok');
+                const formattedDate = dateObj.format('D MMM YYYY HH:mm'); // เช่น 7 ต.ค. 2025 15:16
 
-          if (tokensToAdd <= 0) {
-            alert("กรุณากรอกจำนวน Token ที่ต้องการเพิ่มมากกว่า 0");
-            return;
-          }
-
-          // เรียกฟังก์ชัน handleSave เพื่ออัปเดต Token
-          await handleSave({
-            tokens: (user.tokens ?? 0) + tokensToAdd,
-          });
-
-          alert(`เพิ่ม Token สำเร็จ: +${tokensToAdd}`);
-
-          setTokensToAdd(0);
-          // รีเฟรชข้อมูล user ใหม่
-          router.replace(router.asPath);
-        }}
-        className="mt-4 px-8 py-3 rounded-full text-white text-lg font-semibold transition shadow-lg bg-green-600 hover:bg-green-700"
-      >
-        เพิ่ม Token
-      </button>
+                return (
+                  <div
+                    key={i}
+                    className={`p-3 rounded-lg border-l-4 ${
+                      t.change > 0 
+                        ? 'bg-green-50 border-green-500' 
+                        : 'bg-red-50 border-red-500'
+                    } shadow-sm hover:shadow transition-shadow`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                          t.change > 0 ? 'bg-green-500' : 'bg-red-500'
+                        }`}>
+                          {t.change > 0 ? (
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                            </svg>
+                          ) : (
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                        <div>
+                          <p className={`text-sm font-semibold ${
+                            t.change > 0 ? 'text-green-800' : 'text-red-800'
+                          }`}>
+                            {t.change > 0 ? '+' : ''}{t.change}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500">{formattedDate}</p>
+                    </div>
+                    <p className="text-xs text-gray-600 italic pl-8">{t.reason || 'ไม่มีเหตุผล'}</p>
+                  </div>
+                );
+              })
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+              <svg className="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="text-sm">ไม่มีประวัติ</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
 
-       
-{/* ฝั่งขวา: ประวัติ Token */}
-<div className="max-h-72 overflow-y-auto">
-  <h3 className="font-semibold mb-4 text-gray-800 text-lg border-b border-gray-300 pb-2">ประวัติ Token</h3>
-  {user.tokenHistory && user.tokenHistory.length > 0 ? (
-    <ul className="space-y-3 text-gray-700 text-sm">
-      {user.tokenHistory
-        .filter(t => t.change !== 0) // กรองเอาเฉพาะที่ change ไม่เท่ากับ 0
-        .map((t, i) => {
-          // แปลงวันที่เป็นเวลาไทยและ พ.ศ.
-          const dateObj = dayjs(t.date).tz('Asia/Bangkok');
-          const day = String(dateObj.date()).padStart(2, '0');
-          const month = String(dateObj.month() + 1).padStart(2, '0'); // เดือน 0-11
-          const year = dateObj.year() + 543; // แปลงเป็น พ.ศ.
-          const hours = String(dateObj.hour()).padStart(2, '0');
-          const minutes = String(dateObj.minute()).padStart(2, '0');
+    {/* Custom Scrollbar */}
+    <style jsx>{`
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 5px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 10px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+      }
+    `}</style>
+  </section>
+)}
 
-          const formattedDate = `${day}/${month}/${year} ${hours}:${minutes}`;
 
-          return (
-            <li
-              key={i}
-              className={`p-3 rounded-md ${
-                t.change > 0 ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-              } shadow-sm`}
-            >
-              <div className="flex justify-between">
-                <span className="font-medium">{formattedDate}</span>
-                <span>{t.change > 0 ? '+' : ''}{t.change}</span>
-              </div>
-              <p className="mt-1 text-xs italic">{t.reason}</p>
-            </li>
-          );
-        })}
-    </ul>
-  ) : (
-    <p className="text-gray-400 italic">ไม่มีประวัติ token</p>
-  )}
-</div>
-      </section>
-        )}
+        {/* Tab 2: Ban */}
+{activeTab === 2 && (
+  <section className="bg-white rounded-xl shadow-lg p-6 max-w-5xl mx-auto">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-       {/* Tab 2: Ban */}
-        {activeTab === 2 && (
-  <section className="bg-white rounded-lg shadow-md p-8 max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+      {/* ฝั่งซ้าย */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">การระงับบัญชี</h2>
 
-    {/* ฝั่งซ้าย */}
-    <div>
-      <h2 className="text-2xl font-semibold text-gray-800 mb-6">การระงับบัญชีผู้ใช้</h2>
+        {/* Status Badge */}
+        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+          <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">สถานะปัจจุบัน</p>
+          <div className="flex items-center space-x-3">
+            <div className={`w-3 h-3 rounded-full ${
+              isSuspended ? "bg-red-500 animate-pulse" : "bg-green-500"
+            }`}></div>
+            <span className={`text-lg font-bold ${
+              isSuspended ? "text-red-700" : "text-green-700"
+            }`}>
+              {isSuspended ? "บัญชีถูกระงับ" : "บัญชีปกติ"}
+            </span>
+          </div>
+        </div>
 
-      <div className="mb-6">
-        <span
-          className={`inline-block px-4 py-2 rounded-full font-semibold ${
-            isSuspended ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
-          }`}
-        >
-          {isSuspended ? "บัญชีถูกระงับ" : "บัญชีปกติ"}
-        </span>
-      </div>
-
-      <div className="flex space-x-4 mb-4">
-        {/* ปุ่มระงับบัญชี */}
-        <button
-          type="button"
-          onClick={() => setSuspendChecked(true)}
-          className={`px-4 py-2 rounded font-medium transition ${
-            suspendChecked ? "bg-red-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-red-500 hover:text-white"
-          }`}
-        >
-          ระงับบัญชีผู้ใช้
-        </button>
-
-        {/* ปุ่มยกเลิกระงับ - แสดงเฉพาะเมื่อบัญชีถูกระงับ */}
-        {isSuspended && (
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          {/* ปุ่มระงับบัญชี */}
           <button
             type="button"
-            onClick={async () => {
-              const confirmCancel = confirm("คุณแน่ใจที่จะยกเลิกการระงับบัญชีผู้ใช้นี้หรือไม่?");
-              if (!confirmCancel) return;
-
-              // Clear reason ใน client
-              setSuspensionReason("");
-              setSuspendChecked(false);
-
-              // อัปเดตสถานะจริงทันทีที่ backend
-              await handleSave({
-                isSuspended: false,
-                suspensionReason: "",
-              });
-
-              alert("สถานะ: ปลดระงับแล้ว");
-            }}
-            className={`px-4 py-2 rounded font-medium transition ${
-              !suspendChecked ? "bg-green-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-green-500 hover:text-white"
-            }`}
+            onClick={() => setSuspendChecked(true)}
+            disabled={isSuspended && suspendChecked}
+            className={`w-full px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center space-x-2 ${
+              suspendChecked 
+                ? "bg-red-600 text-white shadow-lg" 
+                : "bg-red-50 text-red-700 border-2 border-red-200 hover:bg-red-600 hover:text-white hover:border-red-600"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            ยกเลิกการระงับบัญชี
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+            <span>ระงับบัญชี</span>
           </button>
+
+          {/* ปุ่มยกเลิกระงับ */}
+          {isSuspended && (
+            <button
+              type="button"
+              onClick={async () => {
+                const confirmCancel = confirm("คุณแน่ใจที่จะยกเลิกการระงับบัญชีนี้หรือไม่?");
+                if (!confirmCancel) return;
+
+                setSuspensionReason("");
+                setSuspendChecked(false);
+
+                await handleSave({
+                  isSuspended: false,
+                  suspensionReason: "",
+                });
+
+                alert("สถานะ: ปลดระงับเรียบร้อยแล้ว");
+              }}
+              className={`w-full px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center space-x-2 ${
+                !suspendChecked 
+                  ? "bg-green-600 text-white shadow-lg" 
+                  : "bg-green-50 text-green-700 border-2 border-green-200 hover:bg-green-600 hover:text-white hover:border-green-600"
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>ยกเลิกระงับบัญชี</span>
+            </button>
+          )}
+        </div>
+
+        {/* Warning Message */}
+        {suspendChecked && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-yellow-600 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="text-sm font-semibold text-yellow-800">คำเตือน</p>
+                <p className="text-xs text-yellow-700 mt-0.5">ผู้ใช้จะไม่สามารถเข้าบัญชีได้</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ฝั่งขวา */}
+      <div>
+        {suspendChecked ? (
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+              <label htmlFor="suspensionReason" className="block text-sm font-bold mb-2 text-gray-800 flex items-center">
+                <svg className="w-4 h-4 mr-1 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                เหตุผลการระงับ
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <textarea
+                id="suspensionReason"
+                placeholder="กรุณาระบุเหตุผลการระงับบัญชีอย่างละเอียด..."
+                value={suspensionReason}
+                onChange={(e) => setSuspensionReason(e.target.value)}
+                className="w-full border-2 border-gray-300 rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                rows={6}
+                required
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                {suspensionReason.length}/500 ตัวอักษร
+              </p>
+            </div>
+
+            <button
+              onClick={async () => {
+                if (!suspensionReason.trim()) {
+                  alert("กรุณากรอกเหตุผลการระงับบัญชีด้วยครับ");
+                  return;
+                }
+
+                await handleSave({
+                  isSuspended: true,
+                  suspensionReason: suspensionReason,
+                });
+
+                alert("สถานะ: ระงับบัญชีเรียบร้อยแล้ว");
+              }}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center space-x-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>ยืนยันการระงับ</span>
+            </button>
+          </div>
+        ) : (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center text-gray-400">
+              <svg className="w-20 h-20 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <p className="text-sm font-medium">เลือกการกระทำ</p>
+              <p className="text-xs mt-1">เลือกระหว่างระงับหรือยกเลิกการระงับ</p>
+            </div>
+          </div>
         )}
       </div>
     </div>
-
-    {/* ฝั่งขวา */}
-    <div>
-      {suspendChecked && (
-        <>
-          <div>
-            <label htmlFor="suspensionReason" className="block text-sm font-semibold mb-1 text-gray-700">
-              เหตุผลการระงับบัญชี <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              id="suspensionReason"
-              placeholder="กรุณาระบุเหตุผลการระงับบัญชี"
-              value={suspensionReason}
-              onChange={(e) => setSuspensionReason(e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-3 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              rows={5}
-              required
-            />
-          </div>
-
-          <button
-            onClick={async () => {
-              if (!suspensionReason.trim()) {
-                alert("กรุณากรอกเหตุผลการระงับบัญชีด้วยครับ");
-                return;
-              }
-
-              await handleSave({
-                isSuspended: true,
-                suspensionReason: suspensionReason,
-              });
-
-              alert("สถานะ: ระงับแล้ว");
-            }}
-            className="px-8 py-3 rounded-full text-white text-lg font-semibold transition shadow-lg bg-blue-600 hover:bg-blue-700 mt-4"
-          >
-            บันทึก
-          </button>
-        </>
-      )}
-    </div>
   </section>
-        )}
+)}
 
-    {/* Tab 3: Uploaded Files */}
-{activeTab === 3 && (
+        {/* Tab 3: Uploaded Files */}
+        {activeTab === 3 && (
   <section className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl shadow-lg p-8 max-w-6xl mx-auto">
     <div className="flex items-center justify-between mb-8">
       <div className="flex items-center gap-3">
@@ -675,8 +770,7 @@ const handleSave = async (data?: {
       </div>
     )}
   </section>
-)}
-
+        )}
       </div>
     </AdminLayout>
   );

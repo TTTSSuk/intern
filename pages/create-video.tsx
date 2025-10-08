@@ -47,6 +47,11 @@ export default function CreateVideo() {
   const [confirmStartPopup, setConfirmStartPopup] = useState(false);
   const [confirmCancelPopup, setConfirmCancelPopup] = useState(false);
   
+  const [tokenErrorPopup, setTokenErrorPopup] = useState<{
+  visible: boolean;
+  message?: string;
+}>({ visible: false, message: '' });
+
   const [cancelSuccessPopup, setCancelSuccessPopup] = useState<{
   visible: boolean;
   tokensReturned: number;
@@ -268,13 +273,22 @@ async function confirmStartVideo() {
         body: JSON.stringify({ fileId: id, userId: userId }) 
       });
 
-      if (res.status === 402) {
-        const result = await res.json();
-        setError(result.message || 'จำนวน Token ไม่พอ');
-        setLoading(false);
-        return; 
-      }
+      // if (res.status === 402) {
+      //   const result = await res.json();
+      //   setError(result.message || 'จำนวน Token ไม่พอ');
+      //   setLoading(false);
+      //   return; 
+      // }
 
+      if (res.status === 402) {
+  const result = await res.json();
+  setTokenErrorPopup({  // 🔥 เปลี่ยนตรงนี้
+    visible: true,
+    message: result.message || 'จำนวน Token ไม่พอ'
+  });
+  setLoading(false);
+  return; 
+}
       const result = await res.json();
 
       if (res.ok) {
@@ -613,29 +627,28 @@ async function confirmStartVideo() {
 )}
 
           {/* Token Usage Popup - แสดงแค่ว่างานสำเร็จ */}
-{tokenPopup.visible && (
-  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 p-4">
-    <div className="bg-white border-2 border-green-200 rounded-2xl p-6 max-w-lg w-full shadow-2xl">
-      {/* Header */}
+          {/* TOKEN ERROR POPUP */}
+{tokenErrorPopup.visible && (
+  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 p-4">
+    <div className="bg-white border-2 border-red-200 rounded-2xl p-6 max-w-lg w-full shadow-2xl">
       <div className="flex items-center space-x-4 mb-4">
-        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-2xl">✓</span>
+        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-white text-2xl">⚠️</span>
         </div>
         <div>
-          <h3 className="font-semibold text-green-800 text-lg">สร้างวิดีโอสำเร็จ!</h3>
-          <p className="text-green-600 text-sm mt-1">
-            วิดีโอของคุณถูกสร้างเรียบร้อยแล้ว
+          <h3 className="font-semibold text-red-800 text-lg">Token ไม่เพียงพอ</h3>
+          <p className="text-red-600 text-sm mt-1">
+            {tokenErrorPopup.message}
           </p>
         </div>
       </div>
       
-      {/* Close Button */}
       <div className="flex justify-end mt-6">
         <button
-          onClick={() => setTokenPopup({ visible: false, tokensUsed: 0, remainingTokens: 0 })}
-          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200 text-sm font-medium"
+          onClick={() => setTokenErrorPopup({ visible: false, message: '' })}
+          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium"
         >
-          ปิด
+          ตกลง
         </button>
       </div>
     </div>

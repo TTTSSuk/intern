@@ -170,7 +170,7 @@ export default function UploadZip() {
                     className="flex items-center gap-2 bg-amber-500 text-white rounded-lg px-3 py-2 hover:bg-amber-600 transition-all shadow-md hover:shadow-lg flex-shrink-0"
                   >
                     <Info className="w-4 h-4" />
-                    <span className="font-semibold text-sm">คำแนะนำ</span>
+                    {/* <span className="font-semibold text-sm">คำแนะนำ</span> */}
                   </button>
                 </div>
                 <div className="space-y-3">
@@ -323,58 +323,63 @@ export default function UploadZip() {
               className="overflow-y-auto flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-purple-400"
             >
               {popupView === 'tips' ? (
-                <div className="space-y-4 p-4">
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                    <h3 className="font-bold text-blue-900 mb-2 flex items-center gap-2">
-                      <span className="text-xl">🖼️</span>
-                      รูปภาพ
-                    </h3>
-                    <ul className="text-sm text-blue-800 space-y-1 ml-6 list-disc">
-                      <li>รองรับ JPG, PNG, JPEG</li>
-                      <li>ตั้งชื่อได้ตามต้องการ</li>
-                      <li>แนะนำความละเอียด 1920x1080</li>
-                      <li>ขนาดไฟล์ไม่เกิน 5MB</li>
-                    </ul>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4"> 
+                {/* โฟลเดอร์ */}
+  <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded-lg">
+    <h3 className="font-bold text-amber-900 text-sm mb-2 flex items-center gap-1.5">
+      <span>📁</span>
+      ชื่อโฟลเดอร์
+    </h3>
+    <ul className="text-xs text-amber-800 space-y-0.5 ml-5 list-disc">
+       <li>เรียงลำดับตามวิดีโอ</li>
+       <li>แนะนำ scene-001, scene-002</li>
+       <li>ใช้ตัวเลขเพื่อเรียงง่าย</li>
+    </ul>
+  </div>
+  
+  {/* รูปภาพ */}
+  <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-lg">
+    <h3 className="font-bold text-blue-900 text-sm mb-2 flex items-center gap-1.5">
+      <span>🖼️</span>
+      รูปภาพ
+    </h3>
+    <ul className="text-xs text-blue-800 space-y-0.5 ml-5 list-disc">
+      <li>รองรับ JPG, PNG, JPEG</li>
+      <li>ตั้งชื่อได้ตามต้องการ</li>
+      <li>แนะนำความละเอียด 1920x1080</li>
+      <li>ขนาดไฟล์ไม่เกิน 5MB</li>
+    </ul>
+  </div>
 
-                  <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
-                    <h3 className="font-bold text-green-900 mb-2 flex items-center gap-2">
-                      <span className="text-xl">📝</span>
-                      prompt.txt
-                    </h3>
-                    <ul className="text-sm text-green-800 space-y-1 ml-6 list-disc">
-                      <li>ต้องใช้ชื่อนี้เท่านั้น</li>
-                      <li>เขียนเป็นภาษาไทย</li>
-                      <li>บรรยายลักษณะวิดีโอ</li>
-                      <li>ยิ่งละเอียดยิ่งดี</li>
-                    </ul>
-                  </div>
+  {/* prompt.txt */}
+  <div className="bg-green-50 border-l-4 border-green-500 p-3 rounded-lg">
+    <h3 className="font-bold text-green-900 text-sm mb-2 flex items-center gap-1.5">
+      <span>📝</span>
+      prompt.txt
+    </h3>
+    <ul className="text-xs text-green-800 space-y-0.5 ml-5 list-disc">
+      <li>ชื่อต้องเป็น prompt.txt</li>
+      <li>เขียนเป็นภาษาไทย</li>
+      <li>บรรยายลักษณะวิดีโอ</li>
+      <li>ยิ่งละเอียดยิ่งดี</li>
+    </ul>
+  </div>
 
-                  <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded">
-                    <h3 className="font-bold text-purple-900 mb-2 flex items-center gap-2">
-                      <span className="text-xl">🎙️</span>
-                      voice.txt
-                    </h3>
-                    <ul className="text-sm text-purple-800 space-y-1 ml-6 list-disc">
-                      <li>ต้องใช้ชื่อนี้เท่านั้น</li>
-                      <li>เขียนเป็นภาษาไทย</li>
-                      <li>ความยาว 7-8 วินาที (50-70 คำ)</li>
-                      <li>เนื้อหาบรรยายวิดีโอ</li>
-                    </ul>
-                  </div>
+  {/* voice.txt */}
+  <div className="bg-purple-50 border-l-4 border-purple-500 p-3 rounded-lg">
+    <h3 className="font-bold text-purple-900 text-sm mb-2 flex items-center gap-1.5">
+      <span>🎙️</span>
+      voice.txt
+    </h3>
+    <ul className="text-xs text-purple-800 space-y-0.5 ml-5 list-disc">
+      <li>เขียนเป็นภาษาไทย</li>
+      <li>ความยาว 7-8 วินาที (50-70 คำ)</li>
+      <li>เนื้อหาบรรยายวิดีโอ</li>
+    </ul>
+  </div>
 
-                  <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded">
-                    <h3 className="font-bold text-amber-900 mb-2 flex items-center gap-2">
-                      <span className="text-xl">📁</span>
-                      การตั้งชื่อโฟลเดอร์
-                    </h3>
-                    <ul className="text-sm text-amber-800 space-y-1 ml-6 list-disc">
-                      <li>เรียงลำดับตามวิดีโอ</li>
-                      <li>แนะนำ scene-001, scene-002</li>
-                      <li>ใช้ตัวเลขเพื่อเรียงง่าย</li>
-                    </ul>
-                  </div>
-                </div>
+ 
+</div>
               ) : (
                 <pre className="bg-gray-900 text-green-400 p-4 text-sm font-mono leading-relaxed rounded-lg">
 {`folderName.zip
@@ -398,14 +403,14 @@ export default function UploadZip() {
             </div>
 
             {/* Close Button */}
-            <div className="mt-4 flex justify-end">
+            {/* <div className="mt-4 flex justify-end">
               <button
                 onClick={() => setShowPopup(false)}
                 className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors duration-200 font-medium"
               >
                 ปิด
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
       )}
@@ -440,23 +445,23 @@ export default function UploadZip() {
             </div>
             
             {/* Validation Errors - with Tailwind scrollbar */}
-            <div className="bg-red-50 rounded-lg p-3 overflow-y-auto max-h-48 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-red-100 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-400 hover:[&::-webkit-scrollbar-thumb]:bg-red-500">
-              <h3 className="font-semibold text-red-800 mb-2">พบข้อผิดพลาดในโฟลเดอร์:</h3>
-              <div className="space-y-2">
-                {validationErrors.map((error, index) => (
-                  <div key={index} className="bg-white rounded-lg p-2 border border-red-200">
-                    <p className="font-medium text-slate-800 mb-0">
-                      <strong>📁 {error.folderName}</strong>
-                    </p>
-                    <ul className="text-xs text-red-600 mt-1 ml-4 space-y-0.5">
-                      {error.errors.map((err, idx) => (
-                        <li key={idx}>• {err}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <div className="bg-red-50 rounded-lg p-2 overflow-y-auto max-h-40 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-red-100 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-400">
+  <h3 className="font-semibold text-red-800 text-sm mb-1.5">พบข้อผิดพลาด:</h3>
+  <div className="grid grid-cols-2 gap-1.5">
+    {validationErrors.map((error, index) => (
+      <div key={index} className="bg-white rounded p-1.5 border border-red-200">
+        <p className="font-medium text-slate-800 text-sm mb-0.5 truncate" title={error.folderName}>
+          📁 {error.folderName}
+        </p>
+        <ul className="text-xs text-red-600 ml-4 space-y-0">
+          {error.errors.map((err, idx) => (
+            <li key={idx} className="truncate" title={err}>• {err}</li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </div>
+</div>
             
             {/* Close Button */}
             <div className="mt-6 flex justify-end">

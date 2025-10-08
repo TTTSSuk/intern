@@ -28,6 +28,8 @@ export default function AdminLogin() {
     }
 
     try {
+      console.log("🔐 Attempting login with AdminId:", adminId); // Debug log
+
       const res = await fetch("/api/admin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -35,15 +37,31 @@ export default function AdminLogin() {
       })
 
       const data = await res.json()
+      console.log("📦 Login response:", data); // Debug log
 
       if (res.ok) {
+        console.log("✅ Login successful!"); // Debug log
+        console.log("💾 Saving AdminId to localStorage:", data.adminId); // Debug log
+        
         localStorage.setItem("loggedInAdmin", data.adminId)
+        
+        // Verify it was saved
+        const saved = localStorage.getItem("loggedInAdmin");
+        console.log("🔍 Verify localStorage value:", saved); // Debug log
+        
+        if (saved === data.adminId) {
+          console.log("✅ localStorage saved successfully"); // Debug log
+        } else {
+          console.error("❌ localStorage save failed!"); // Debug log
+        }
+        
         router.push("/admin/dashboard")
       } else {
+        console.log("❌ Login failed:", data.message); // Debug log
         setError(data.message || "Admin ID หรือ Password ไม่ถูกต้อง")
       }
     } catch (err) {
-      console.error("Login error:", err)
+      console.error("❌ Login error:", err)
       setError("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์")
     } finally {
       setIsLoading(false)

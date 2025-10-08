@@ -6,6 +6,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // ดึง AdminId จาก query parameter
     const adminId = req.query.adminId as string;
+    console.log("🔑 Received adminId from query:", adminId); // Debug log
 
     const client = await clientPromise;
     const db = client.db("login-form-app");
@@ -16,13 +17,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const activeUsers = users.filter(u => u.isActive).length;
     const suspendedUsers = users.filter(u => u.isSuspended).length;
 
-    // ผู้ใช้ online (active ภายใน 5 นาทีล่าสุด) - เปลี่ยนจาก 15 เป็น 5
+    // ผู้ใช้ online (active ภายใน 5 นาทีล่าสุด)
     const now = new Date();
     const onlineUsers = users.filter(u => {
       if (!u.lastActive) return false;
       const last = new Date(u.lastActive);
       const diffMinutes = (now.getTime() - last.getTime()) / 1000 / 60;
-      return diffMinutes <= 5; // เปลี่ยนเป็น 5 นาทีให้ตรงกับ Frontend
+      return diffMinutes <= 5;
     }).length;
 
     // วิดีโอ
@@ -32,18 +33,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ดึงชื่อ admin ถ้ามี adminId
     let adminName = "แอดมิน";
     if (adminId) {
+      console.log("🔍 Searching for admin with AdminId:", adminId); // Debug log
+      
+      // ค้นหาด้วย AdminId ที่ตรงทุกตัวอักษร
       const admin = await db.collection("admins").findOne({ AdminId: adminId });
+      console.log("📄 Admin document found:", admin); // Debug log
+      
       if (admin && admin.name) {
         adminName = admin.name;
+        console.log("✅ Admin name set to:", adminName); // Debug log
+      } else {
+        console.log("❌ Admin not found or no name field"); // Debug log
+        
+        // ลองหาแบบ case-insensitive
+        const adminInsensitive = await db.collection("admins").findOne({ 
+          AdminId: { $regex: new RegExp(`^${adminId}$`, 'i') } 
+        });
+        console.log("🔄 Trying case-insensitive search:", adminInsensitive); // Debug log
+        
+        if (adminInsensitive && adminInsensitive.name) {
+          adminName = adminInsensitive.name;
+          console.log("✅ Admin name found (case-insensitive):", adminName); // Debug log
+        }
       }
     }
-
-    // Log เพื่อ debug
-    console.log('Online users calculation:', {
-      totalUsers,
-      onlineUsers,
-      usersWithLastActive: users.filter(u => u.lastActive).length
-    });
 
     // ดึงรายชื่อผู้ใช้ที่ออนไลน์ตอนนี้ (ภายใน 5 นาที)
     const onlineUsersList = users
@@ -56,10 +69,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .map(u => ({
         id: u.userId || u._id.toString(),
         name: u.name,
-        email: u.email,
         lastActive: u.lastActive
       }))
-      .slice(0, 10); // แสดงแค่ 10 คนแรก
+      .slice(0, 10);
 
     // ดึงรายชื่อผู้ใช้ที่ใช้งานภายใน 24 ชั่วโมง
     const recentUsers = users
@@ -72,15 +84,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .sort((a, b) => {
         const dateA = new Date(a.lastActive).getTime();
         const dateB = new Date(b.lastActive).getTime();
-        return dateB - dateA; // เรียงจากล่าสุดไปเก่าสุด
+        return dateB - dateA;
       })
       .map(u => ({
         id: u.userId || u._id.toString(),
         name: u.name,
-        email: u.email,
         lastActive: u.lastActive
       }))
-      .slice(0, 15); // แสดงแค่ 15 คนแรก
+      .slice(0, 15);
+
+    console.log("🎯 Final adminName being sent:", adminName); // Debug log
 
     (res as any).status(200).json({
       totalUsers,
@@ -88,12 +101,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       suspendedUsers,
       totalVideos,
       activeUsers,
+      adminId,
       adminName,
-      onlineUsersList, // เพิ่มรายชื่อผู้ใช้ที่ออนไลน์
-      recentUsers, // เพิ่มรายชื่อผู้ใช้ที่ใช้งานภายใน 24 ชั่วโมง
+      onlineUsersList,
+      recentUsers,
     });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error in stats API:", error);
     (res as any).status(500).json({ message: "Error fetching stats" });
   }
 }
