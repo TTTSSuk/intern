@@ -18,6 +18,7 @@ interface Clip {
   finalVideo?: string;
   createdAt: string | { $date: string } | null;
   tokenDeducted?: boolean;
+  folderName?: string;
 }
 
 interface ExecutionHistory {
@@ -78,25 +79,31 @@ function formatDateTime(date: Date): string {
 
 // Function to get source image and prompt file for a clip
 function getClipSource(video: HistoryVideo, clipIndex: number) {
-  if (!video.folders?.subfolders?.length) {
+  if (!video.folders?.subfolders?.length || !video.clips?.[clipIndex]) {
     return { sourceImage: "N/A", promptFile: "N/A" };
   }
 
-  const parentFolder = video.originalName.replace(/\.zip$/i, "");
-  const subfolders = video.folders.subfolders[0].subfolders ?? [];
-  const subfolder = subfolders[clipIndex];
-
-  if (!subfolder) {
+  const clip = video.clips[clipIndex];
+  const folderName = clip.folderName;
+  
+  if (!folderName) {
     return { sourceImage: "N/A", promptFile: "N/A" };
   }
 
-  const imageFile =
-    subfolder.files?.find((f) => f.match(/\.(jpg|jpeg|png|gif)$/i)) ?? "";
-  const txtFile = subfolder.files?.find((f) => f.endsWith(".txt")) ?? "";
+  // หา subfolder ที่ตรงกับ folderName ของ clip
+  const subfolder = video.folders.subfolders.find(sf => sf.name === folderName);
 
+  if (!subfolder || !subfolder.files) {
+    return { sourceImage: "N/A", promptFile: "N/A" };
+  }
+
+  const imageFile = subfolder.files.find((f) => f.match(/\.(jpg|jpeg|png|gif)$/i)) ?? "";
+  const txtFile = subfolder.files.find((f) => f.endsWith("prompt.txt")) ?? "";
+
+  // ต้องการ: 192.168.70.166:8080/1759898782252/01/bee.png
   const basePath = video.extractPath.replace("./uploads/extracted/", "");
   const sourceImage = imageFile
-    ? `${BASE_VIDEO_URL}/${basePath}/${parentFolder}/${subfolder.name}/${imageFile}`
+    ? `${BASE_VIDEO_URL}/${basePath}/${folderName}/${imageFile}`
     : "N/A";
 
   return { sourceImage, promptFile: txtFile };
@@ -540,6 +547,7 @@ const closeVideoDetail = () => {
               </button>
             </div>
           </div>
+
           {(searchTerm || dateFrom || dateTo || statusFilter !== "all") && (
             <div className="flex items-center justify-between">
               <p className="text-slate-600 ml-13">Track your video processing journey</p>
@@ -828,8 +836,7 @@ const closeVideoDetail = () => {
         )}
 
         {selectedClip && (
-  <div
-    className="fixed inset-0 z-[70] bg-black/10 backdrop-blur-sm animate-in fade-in duration-300 flex items-center justify-center p-4"
+  <div className="fixed inset-0 z-[60] bg-black/10 backdrop-blur-[1px] animate-in fade-in duration-300 flex items-center justify-center p-4"
     style={{
               position: "fixed",
               top: 0,
@@ -881,11 +888,18 @@ const closeVideoDetail = () => {
                     );
                     return sourceImage !== "N/A" ? (
                       <img
-                        src={sourceImage}
-                        alt="Source"
-                        className="w-full rounded-lg shadow border"
-                        style={{ height: "200px", objectFit: "cover" }}
-                      />
+  src={sourceImage}
+  alt="Source"
+  className="w-11/12 max-w-md mx-auto max-h-[50vh] rounded-lg shadow border"
+  style={{ objectFit: "contain" }}
+/>
+
+                      // <img
+                      //   src={sourceImage}
+                      //   alt="Source"
+                      //   className="w-full rounded-lg shadow border"
+                      //   style={{ height: "200px", objectFit: "cover" }}
+                      // />
                     ) : (
                       <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">
                         No source image available
@@ -901,8 +915,8 @@ const closeVideoDetail = () => {
 
         {/* Video Detail Modal */}
 {selectedVideo && (
-  <div
-    className="fixed inset-0 z-[60] bg-black/10 backdrop-blur-sm flex items-center justify-center p-4"
+ <div
+  className="fixed inset-0 z-[50] bg-black/10 backdrop-blur-[1px] animate-in fade-in duration-300 flex items-center justify-center p-4"
     onClick={(e) => {
       if (e.target === e.currentTarget) closeVideoDetail();
     }}
