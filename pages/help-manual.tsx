@@ -19,10 +19,10 @@ export default function HelpManual() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showStructurePopup, setShowStructurePopup] = useState(false);
 
-  const [showWarning, setShowWarning] = useState(false);
-  const [showTips, setShowTips] = useState(false);
+  // const [showWarning, setShowWarning] = useState(false);
+  // const [showTips, setShowTips] = useState(false);
   const [popupView, setPopupView] = useState('tips');
-  
+
   const BASE_VIDEO_URL = "http://192.168.70.166:8080";
 
   const scrollToSection = (sectionId: string) => {
@@ -624,42 +624,27 @@ export default function HelpManual() {
   return (
      <div className="min-h-screen">
       {/* Enhanced Header with 3D Effect */}
-      <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white py-8 px-4 shadow-2xl relative overflow-hidden">
-        {/* Overlay เพิ่มความลึก */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-        
-        {/* Blur orbs สร้างมิติ */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-400/20 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
-        
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="flex items-center gap-4 mb-4">
-            <button 
-              onClick={() => window.history.back()}
-              className="p-2 hover:bg-white/20 rounded-lg transition-all duration-300 backdrop-blur-sm bg-white/10 shadow-lg hover:shadow-xl hover:scale-105"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <div className="flex items-center gap-3">
-              <Book className="w-10 h-10 drop-shadow-lg" />
-              <div>
-                <h1 className="text-3xl font-bold drop-shadow-md">คู่มือการใช้งานระบบ MediaFlux</h1>
-                <p className="text-indigo-100 text-sm mt-1">แนะนำการใช้งานระบบสร้างวิดีโอ</p>
-              </div>
-            </div>
-          </div>
-          <div className="relative">
-            <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="ค้นหาหัวข้อที่ต้องการ..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-lg text-gray-800 focus:ring-2 focus:ring-white focus:outline-none shadow-xl backdrop-blur-sm bg-white/95 hover:bg-white transition-all duration-300"
-            />
-          </div>
-        </div>
+      <div className="bg-white border-b border-gray-200 py-6 px-4">
+  <div className="max-w-7xl mx-auto">
+    <div className="flex items-center gap-4">
+      <button 
+        onClick={() => window.history.back()}
+        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+      >
+        <ArrowLeft className="w-5 h-5 text-gray-600" />
+      </button>
+      {/* <div className="flex items-center gap-3">
+        <Book className="w-8 h-8 text-gray-700" /> */}
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">คู่มือการใช้งานระบบ MediaFlux</h1>
+          <p className="text-gray-500 text-sm mt-0.5">แนะนำการใช้งานระบบสร้างวิดีโอ</p>
+        {/* </div> */}
       </div>
+    </div>
+  </div>
+</div>
+
+
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex gap-6">
@@ -752,7 +737,7 @@ export default function HelpManual() {
             </div>
 
             <div className="mt-4 text-center text-sm text-gray-500">
-              <p>เวอร์ชัน 1.0 | อัปเดทล่าสุด: {new Date().toLocaleDateString('th-TH')}</p>
+              <p>เวอร์ชัน 1.0 | อัปเดทล่าสุด: {new Date().toLocaleDateString('en-US')}</p>
             </div>
           </div>
         </div>
