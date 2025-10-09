@@ -205,6 +205,15 @@ export default function Layout({
                   >
                     ดูประวัติ Token
                   </button>
+                   <button
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      router.push("/help-manual");
+                    }}
+                    className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-indigo-100"
+                  >
+                    คู่มือการใช้งาน
+                  </button>
                   <hr className="my-1 border-gray-200" />
                   <button
                     onClick={handleLogout}
