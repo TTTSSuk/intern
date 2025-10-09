@@ -644,8 +644,6 @@ export default function HelpManual() {
   </div>
 </div>
 
-
-
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex gap-6">
           <aside className="hidden lg:block w-64 flex-shrink-0">

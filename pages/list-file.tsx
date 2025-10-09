@@ -27,6 +27,33 @@ interface ValidationError {
   errors: string[];
 }
 
+const sortFiles = (files: ExtractedFile[]): ExtractedFile[] => {
+  const statusOrder: { [key: string]: number } = {
+    'error': 3,
+    'completed': 2, // วิดีโอสำเร็จรูป
+    'done': 1,      // สร้างวิดีโอเสร็จแล้ว
+  };
+
+  return files.sort((a, b) => {
+    const statusA = a.status.toLowerCase();
+    const statusB = b.status.toLowerCase();
+    
+    const orderA = statusOrder[statusA] || 99; // กำหนดค่า default ถ้าสถานะไม่อยู่ใน list
+    const orderB = statusOrder[statusB] || 99;
+
+    // 1. จัดเรียงตามสถานะ (done=1, completed=2, error=3)
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+
+    // 2. ถ้าสถานะเหมือนกัน ให้เรียงตามวันที่สร้างล่าสุด (Descending by createdAt)
+    const dateA = new Date(a.createdAt).getTime();
+    const dateB = new Date(b.createdAt).getTime();
+    
+    return dateB - dateA;
+  });
+};
+
 export default function ListFile() {
   const router = useRouter();
   const [files, setFiles] = useState<ExtractedFile[]>([]);
@@ -91,7 +118,10 @@ export default function ListFile() {
           return status !== 'running' && status !== 'processing' && status !== 'pending';
         });
         
-        setFiles(filteredFiles);
+        // ⭐ เพิ่มการจัดเรียงไฟล์ก่อน setFiles
+        const sortedFiles = sortFiles(filteredFiles);
+
+        setFiles(sortedFiles);
       } catch (err) {
         setError((err as Error).message);
       } finally {
@@ -219,9 +249,9 @@ export default function ListFile() {
       <StepProgress 
         steps={steps} 
         currentStep={currentStep}
-        canGoNext={selectedFileId !== null}
+        // canGoNext={selectedFileId !== null}
         onPreview={() => router.push('/upload-zip')}
-        onNext={handleNext}
+        // onNext={handleNext}
       />
       
       {/* Header */}
