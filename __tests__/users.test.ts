@@ -8,9 +8,15 @@ describe('/api/users', () => {
   let mockInsertOne: jest.Mock;
   let mockUpdateOne: jest.Mock;
   let mockCollection: jest.Mock;
+  let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    // Mock console.error
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Reset mocks
     jest.clearAllMocks();
+
     mockToArray = global.__mongoMocks.mockToArray;
     mockFindOne = global.__mongoMocks.mockFindOne;
     mockInsertOne = global.__mongoMocks.mockInsertOne;
@@ -27,6 +33,10 @@ describe('/api/users', () => {
       updateOne: mockUpdateOne,
       aggregate: mockAggregate,
     });
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   describe('GET /api/users', () => {
@@ -50,7 +60,6 @@ describe('/api/users', () => {
       });
 
       await handler(req as any, res as any);
-
 
       expect(res._getStatusCode()).toBe(200);
       expect(res._getJSONData()).toEqual({
@@ -132,7 +141,6 @@ describe('/api/users', () => {
 
       await handler(req as any, res as any);
 
-
       expect(res._getStatusCode()).toBe(409);
       expect(res._getJSONData()).toEqual({
         success: false,
@@ -157,7 +165,6 @@ describe('/api/users', () => {
 
       await handler(req as any, res as any);
 
-
       expect(res._getStatusCode()).toBe(200);
       expect(res._getJSONData()).toEqual({
         success: true,
@@ -174,6 +181,7 @@ describe('/api/users', () => {
 
       mockFindOne.mockResolvedValue(existingTokenData);
       mockUpdateOne.mockResolvedValue({ modifiedCount: 1 });
+      mockInsertOne.mockResolvedValue({ insertedId: 'history-id' }); // ✅ สำหรับ token_history
 
       const { req, res } = createMocks({
         method: 'PATCH',
@@ -186,20 +194,26 @@ describe('/api/users', () => {
 
       await handler(req as any, res as any);
 
-
       expect(res._getStatusCode()).toBe(200);
+      expect(res._getJSONData()).toEqual({
+        success: true,
+        message: 'อัปเดตสถานะผู้ใช้สำเร็จ'
+      });
+
+      // ✅ ตรวจสอบว่า updateOne ถูกเรียกเพื่ออัพเดท tokens ใน user_tokens
       expect(mockUpdateOne).toHaveBeenCalledWith(
         { userId: 'user123' },
+        { $set: { tokens: 150 } }
+      );
+
+      // ✅ ตรวจสอบว่า insertOne ถูกเรียกเพื่อเพิ่ม history ใน token_history collection
+      expect(mockInsertOne).toHaveBeenCalledWith(
         expect.objectContaining({
-          $set: expect.objectContaining({
-            tokens: 150,
-            tokenHistory: expect.arrayContaining([
-              expect.objectContaining({
-                change: 100,
-                reason: 'Admin added tokens'
-              })
-            ])
-          })
+          userId: 'user123',
+          change: 100, // 150 - 50 = 100
+          reason: 'Admin added tokens',
+          type: 'admin_adjustment',
+          date: expect.any(Date)
         })
       );
     });
@@ -213,7 +227,6 @@ describe('/api/users', () => {
       });
 
       await handler(req as any, res as any);
-
 
       expect(res._getStatusCode()).toBe(400);
       expect(res._getJSONData()).toEqual({
@@ -235,12 +248,40 @@ describe('/api/users', () => {
 
       await handler(req as any, res as any);
 
-
       expect(res._getStatusCode()).toBe(404);
       expect(res._getJSONData()).toEqual({
         success: false,
         message: 'ไม่พบข้อมูลโทเค็นของผู้ใช้'
       });
+    });
+
+    it('should not update if tokens value is the same', async () => {
+      const existingTokenData = {
+        userId: 'user123',
+        tokens: 100,
+      };
+
+      mockFindOne.mockResolvedValue(existingTokenData);
+
+      const { req, res } = createMocks({
+        method: 'PATCH',
+        body: {
+          userId: 'user123',
+          tokens: 100, // Same value, no change
+        },
+      });
+
+      await handler(req as any, res as any);
+
+      expect(res._getStatusCode()).toBe(400);
+      expect(res._getJSONData()).toEqual({
+        success: false,
+        message: 'ไม่มีข้อมูลที่จะอัปเดต'
+      });
+
+      // Should not call updateOne or insertOne when no change
+      expect(mockUpdateOne).not.toHaveBeenCalled();
+      expect(mockInsertOne).not.toHaveBeenCalled();
     });
   });
 
@@ -251,7 +292,6 @@ describe('/api/users', () => {
       });
 
       await handler(req as any, res as any);
-
 
       expect(res._getStatusCode()).toBe(405);
     });

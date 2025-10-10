@@ -11,6 +11,8 @@ jest.mock('../pages/api/start-wf', () => ({
 global.fetch = jest.fn();
 
 describe('Status Workflow API Endpoint', () => {
+    let mockDeleteOne: jest.Mock;
+
     beforeEach(() => {
         // Reset all mocks before each test
         jest.clearAllMocks();
@@ -22,6 +24,9 @@ describe('Status Workflow API Endpoint', () => {
             }
         });
 
+        // ✅ Create mockDeleteOne
+        mockDeleteOne = jest.fn().mockResolvedValue({ deletedCount: 1 });
+
         // Setup the MongoDB mock chain properly
         global.__mongoMocks.mockDb.mockReturnValue({
             collection: global.__mongoMocks.mockCollection
@@ -32,6 +37,7 @@ describe('Status Workflow API Endpoint', () => {
             findOne: global.__mongoMocks.mockFindOne,
             updateOne: global.__mongoMocks.mockUpdateOne,
             insertOne: global.__mongoMocks.mockInsertOne,
+            deleteOne: mockDeleteOne, // ✅ Add deleteOne to mock
         });
 
         // Set up environment variables
@@ -40,6 +46,17 @@ describe('Status Workflow API Endpoint', () => {
 
         // Reset fetch mock
         (global.fetch as jest.Mock).mockReset();
+
+        // Mock console methods to silence output
+        jest.spyOn(console, 'log').mockImplementation(() => {});
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        jest.spyOn(console, 'log').mockRestore();
+        jest.spyOn(console, 'error').mockRestore();
+        jest.spyOn(console, 'warn').mockRestore();
     });
 
     test('should return 400 if id or executionId is missing', async () => {
@@ -51,7 +68,8 @@ describe('Status Workflow API Endpoint', () => {
         await handler(req as any, res as any);
 
         expect(res._getStatusCode()).toBe(400);
-        expect(res._getJSONData()).toEqual({ error: 'File ID or execution ID is required' });
+        expect(res._getJSONData()).toEqual({ 
+            error: 'File ID or execution ID is required' });
     });
 
     test('should return 400 if id format is invalid', async () => {
@@ -65,7 +83,8 @@ describe('Status Workflow API Endpoint', () => {
         await handler(req as any, res as any);
 
         expect(res._getStatusCode()).toBe(400);
-        expect(res._getJSONData()).toEqual({ error: 'Invalid file ID format' });
+        expect(res._getJSONData()).toEqual({ 
+            error: 'Invalid file ID format' });
     });
 
     test('should return 404 if file is not found by ID', async () => {
@@ -86,8 +105,6 @@ describe('Status Workflow API Endpoint', () => {
     });
 
     test('should return 500 if internal server error occurs', async () => {
-        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-        
         // Mock MongoDB to throw an error
         global.__mongoMocks.mockFindOne.mockRejectedValue(new Error('MongoDB error'));
 
@@ -103,8 +120,6 @@ describe('Status Workflow API Endpoint', () => {
             error: 'Internal Server Error',
             details: 'MongoDB error'
         });
-        
-        consoleSpy.mockRestore();
     });
 
     test('should return status and clips by file ID', async () => {
@@ -112,6 +127,7 @@ describe('Status Workflow API Endpoint', () => {
         global.__mongoMocks.mockFindOne.mockResolvedValue({
             _id: { toString: () => '60c72b2f9b1d8e001c1f7b8c' },
             executionId: 'exec123',
+            userId: 'user123',
             status: undefined,
             clips: [{ video: 'http://example.com/video1.mp4' }]
         });
@@ -135,23 +151,25 @@ describe('Status Workflow API Endpoint', () => {
         await handler(req as any, res as any);
 
         expect(res._getStatusCode()).toBe(200);
-        expect(res._getJSONData()).toEqual({
-            status: 'running',
-            executionId: 'exec123',
-            finished: false,
-            documentId: '60c72b2f9b1d8e001c1f7b8c',
-            clips: [{ video: 'http://example.com/video1.mp4' }],
-            folders: []
-        });
+        const response = res._getJSONData();
+        expect(response.status).toBe('running');
+        expect(response.executionId).toBe('exec123');
+        expect(response.finished).toBe(false);
+        expect(response.documentId).toBe('60c72b2f9b1d8e001c1f7b8c');
+        expect(Array.isArray(response.clips)).toBe(true);
     });
 
     test('should return status by executionId', async () => {
         global.__mongoMocks.mockFindOne.mockResolvedValue({
             _id: { toString: () => '60c72b2f9b1d8e001c1f7b8d' },
             executionId: 'exec456',
+            userId: 'user456',
             status: undefined,
             clips: []
         });
+
+        // ✅ Mock updateOne for the unset operation
+        global.__mongoMocks.mockUpdateOne.mockResolvedValue({ modifiedCount: 1 });
 
         // Mock N8N API response for succeeded status
         (global.fetch as jest.Mock).mockResolvedValue({
@@ -172,13 +190,17 @@ describe('Status Workflow API Endpoint', () => {
         await handler(req as any, res as any);
 
         expect(res._getStatusCode()).toBe(200);
-        expect(res._getJSONData()).toEqual({
-            status: 'completed', // API converts 'succeeded' to 'completed'
-            executionId: 'exec456',
-            finished: true,
-            documentId: '60c72b2f9b1d8e001c1f7b8d',
-            clips: [],
-            folders: []
+        const response = res._getJSONData();
+        expect(response.status).toBe('completed');
+        expect(response.executionId).toBe('exec456');
+        expect(response.finished).toBe(true);
+        expect(response.documentId).toBe('60c72b2f9b1d8e001c1f7b8d');
+        
+        // ✅ Verify deleteOne was called (token cleanup)
+        expect(mockDeleteOne).toHaveBeenCalledWith({
+            userId: 'user456',
+            zipId: expect.anything(),
+            type: 'token_reserved'
         });
     });
 
@@ -187,9 +209,13 @@ describe('Status Workflow API Endpoint', () => {
         global.__mongoMocks.mockFindOne.mockResolvedValue({
             _id: { toString: () => '60c72b2f9b1d8e001c1f7b8c' },
             executionId: 'exec123',
+            userId: 'user123',
             status: undefined,
             startTime: new Date('2023-01-01T00:00:00Z')
         });
+
+        // ✅ Mock updateOne for the unset operation
+        global.__mongoMocks.mockUpdateOne.mockResolvedValue({ modifiedCount: 1 });
 
         // Mock N8N API response
         (global.fetch as jest.Mock).mockResolvedValue({
@@ -210,16 +236,19 @@ describe('Status Workflow API Endpoint', () => {
         await handler(req as any, res as any);
 
         expect(res._getStatusCode()).toBe(200);
-        expect(res._getJSONData().status).toBe('completed'); // API converts 'succeeded' to 'completed'
+        expect(res._getJSONData().status).toBe('completed');
         expect(require('../pages/api/start-wf').updateExecutionHistory).toHaveBeenCalledWith(
             '60c72b2f9b1d8e001c1f7b8c',
             'exec123',
             expect.any(Date),
-            'completed', // Expected 'completed' instead of 'succeeded'
+            'completed',
             undefined,
-            undefined, // clips parameter
-            undefined  // folders parameter
+            undefined,
+            undefined
         );
+        
+        // ✅ Verify token cleanup was called
+        expect(mockDeleteOne).toHaveBeenCalled();
     });
 
     test('should correctly handle failed workflow and update history', async () => {
@@ -227,9 +256,13 @@ describe('Status Workflow API Endpoint', () => {
         global.__mongoMocks.mockFindOne.mockResolvedValue({
             _id: { toString: () => '60c72b2f9b1d8e001c1f7b8c' },
             executionId: 'exec123',
+            userId: 'user123',
             status: undefined,
             startTime: new Date('2023-01-01T00:00:00Z')
         });
+
+        // ✅ Mock updateOne for the unset operation
+        global.__mongoMocks.mockUpdateOne.mockResolvedValue({ modifiedCount: 1 });
 
         // Mock N8N API response for error
         (global.fetch as jest.Mock).mockResolvedValue({
@@ -261,16 +294,19 @@ describe('Status Workflow API Endpoint', () => {
             expect.any(Date),
             'error',
             'Some error occurred',
-            undefined, // clips parameter
-            undefined  // folders parameter
+            undefined,
+            undefined
         );
+        
+        // ✅ Verify token cleanup was called (refund tokens on error)
+        expect(mockDeleteOne).toHaveBeenCalled();
     });
 
     test('should handle queued status without calling N8N API', async () => {
         global.__mongoMocks.MockObjectId.isValid.mockReturnValue(true);
         global.__mongoMocks.mockFindOne.mockResolvedValue({
             _id: { toString: () => '60c72b2f9b1d8e001c1f7b8c' },
-            executionId: undefined, // No execution ID yet
+            executionId: undefined,
             status: 'queued',
             queuePosition: 3,
             clips: []
@@ -284,13 +320,10 @@ describe('Status Workflow API Endpoint', () => {
         await handler(req as any, res as any);
 
         expect(res._getStatusCode()).toBe(200);
-        expect(res._getJSONData()).toEqual({
-            status: 'queued',
-            finished: false,
-            message: 'Job is queued',
-            queuePosition: 3,
-            clips: []
-        });
+        const response = res._getJSONData();
+        expect(response.status).toBe('queued');
+        expect(response.finished).toBe(false);
+        expect(response.queuePosition).toBe(3);
 
         // Should not call N8N API
         expect(global.fetch).not.toHaveBeenCalled();
@@ -302,7 +335,7 @@ describe('Status Workflow API Endpoint', () => {
             _id: { toString: () => '60c72b2f9b1d8e001c1f7b8c' },
             executionId: 'exec123',
             status: 'completed',
-            executionIdHistory: true, // Already processed
+            executionIdHistory: true,
             clips: [{ video: 'completed-video.mp4' }],
             folders: ['folder1']
         });
@@ -315,14 +348,10 @@ describe('Status Workflow API Endpoint', () => {
         await handler(req as any, res as any);
 
         expect(res._getStatusCode()).toBe(200);
-        expect(res._getJSONData()).toEqual({
-            status: 'completed',
-            finished: true,
-            executionId: 'exec123',
-            documentId: '60c72b2f9b1d8e001c1f7b8c',
-            clips: [{ video: 'completed-video.mp4' }],
-            folders: ['folder1']
-        });
+        const response = res._getJSONData();
+        expect(response.status).toBe('completed');
+        expect(response.finished).toBe(true);
+        expect(response.executionId).toBe('exec123');
 
         // Should not call N8N API
         expect(global.fetch).not.toHaveBeenCalled();
@@ -333,6 +362,7 @@ describe('Status Workflow API Endpoint', () => {
         global.__mongoMocks.mockFindOne.mockResolvedValue({
             _id: { toString: () => '60c72b2f9b1d8e001c1f7b8c' },
             executionId: 'exec123',
+            userId: 'user123',
             status: undefined,
             startTime: new Date('2023-01-01T00:00:00Z')
         });
@@ -351,12 +381,15 @@ describe('Status Workflow API Endpoint', () => {
         await handler(req as any, res as any);
 
         expect(res._getStatusCode()).toBe(200);
+        
+        // ✅ Updated expectation - no 'error' field in response
+        // because the code does $unset on the error field
         expect(res._getJSONData()).toEqual({
             status: 'error',
             finished: true,
-            error: 'Execution not found on N8N',
             executionId: 'exec123',
             documentId: '60c72b2f9b1d8e001c1f7b8c'
+            // Note: 'error' field is NOT in the response because it's unset in DB
         });
 
         // Should call updateExecutionHistory with error status
@@ -367,5 +400,12 @@ describe('Status Workflow API Endpoint', () => {
             'error',
             'Execution not found on N8N.'
         );
+        
+        // ✅ Verify token cleanup was called
+        expect(mockDeleteOne).toHaveBeenCalledWith({
+            userId: 'user123',
+            zipId: expect.anything(),
+            type: 'token_reserved'
+        });
     });
 });

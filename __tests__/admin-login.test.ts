@@ -107,7 +107,13 @@ describe('Admin Login API Endpoint', () => {
         await handler(mockRequest, mockResponse);
 
         expect(mockResponse._getStatusCode()).toBe(200);
-        expect(mockResponse._getJSONData()).toEqual({ message: 'เข้าสู่ระบบสำเร็จ' });
+        expect(mockResponse._getJSONData()).toEqual({
+  success: true,
+  message: 'เข้าสู่ระบบสำเร็จ',
+  adminId: 'testadmin',
+  name: 'Test Admin'
+});
+
     });
 
     // Case 6: ทดสอบกรณีเกิดข้อผิดพลาดภายในเซิร์ฟเวอร์
@@ -124,6 +130,10 @@ describe('Admin Login API Endpoint', () => {
         expect(mockResponse._getJSONData()).toEqual({ message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
         
         // Verify that error was logged
-        expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(Error));
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+  "❌ Login error:",
+  expect.any(Error)
+);
+        // expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(Error));
     });
 });

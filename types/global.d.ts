@@ -40,6 +40,7 @@ declare global {
         mockFindOne: jest.Mock;
         mockUpdateOne: jest.Mock;
         mockInsertOne: jest.Mock;
+        mockAggregate: jest.Mock; // ✅ ต้องมีบรรทัดนี้ !!!
         mockCollection: jest.Mock;
         mockDb: jest.Mock;
         mockClient: any;
@@ -56,6 +57,7 @@ declare global {
     mockFindOne: jest.Mock;
     mockUpdateOne: jest.Mock;
     mockInsertOne: jest.Mock;
+    mockAggregate: jest.Mock;
     mockCollection: jest.Mock;
     mockDb: jest.Mock;
     mockClient: any;
