@@ -58,7 +58,7 @@ export default function HelpManual() {
     <div className="bg-gray-100 p-2 rounded overflow-hidden">
       <img
         src={`${BASE_VIDEO_URL}/manual-help/login.png`}
-        alt="หน้า Dashboard แสดงภาพรวมทั้งหมด"
+        alt="img login"
         className="max-w-md h-auto rounded"
       />
     </div>
@@ -98,7 +98,7 @@ export default function HelpManual() {
     <div className="bg-gray-100 p-2 rounded overflow-hidden">
       <img
         src={`${BASE_VIDEO_URL}/manual-help/dashboard.png`}
-        alt="หน้า Dashboard แสดงภาพรวมทั้งหมด"
+        alt="img dashboard"
         className="max-w-md h-auto rounded"
       />
     </div>
@@ -151,7 +151,7 @@ export default function HelpManual() {
     <div className="bg-gray-100 p-2 rounded overflow-hidden">
       <img
         src={`${BASE_VIDEO_URL}/manual-help/upload.png`}
-        alt="หน้า Dashboard แสดงภาพรวมทั้งหมด"
+        alt="img upload"
         className="max-w-md h-auto rounded"
       />
     </div>
@@ -304,7 +304,7 @@ export default function HelpManual() {
     <div className="bg-gray-100 p-2 rounded overflow-hidden">
       <img
         src={`${BASE_VIDEO_URL}/manual-help/createvdo.png`}
-        alt="หน้า Dashboard แสดงภาพรวมทั้งหมด"
+        alt="img createvdo"
         className="max-w-md h-auto rounded"
       />
     </div>
@@ -412,7 +412,7 @@ export default function HelpManual() {
     <div className="bg-gray-100 p-2 rounded overflow-hidden">
       <img
         src={`${BASE_VIDEO_URL}/manual-help/myvdo.png`}
-        alt="หน้า Dashboard แสดงภาพรวมทั้งหมด"
+        alt="img myvdo"
         className="max-w-md h-auto rounded"
       />
     </div>
@@ -458,7 +458,7 @@ export default function HelpManual() {
     <div className="bg-gray-100 p-2 rounded overflow-hidden">
       <img
         src={`${BASE_VIDEO_URL}/manual-help/histoken.png`}
-        alt="หน้า Dashboard แสดงภาพรวมทั้งหมด"
+        alt="img histk"
         className="max-w-md h-auto rounded"
       />
     </div>
@@ -479,7 +479,7 @@ export default function HelpManual() {
                 <div className="bg-gray-100 p-2 rounded overflow-hidden inline-block">
   <img
     src={`${BASE_VIDEO_URL}/manual-help/lock.png`}
-    alt="img"
+    alt="img tklock"
     className="max-w-md h-auto rounded"
   />
 </div>
@@ -504,7 +504,7 @@ export default function HelpManual() {
                 <div className="bg-gray-100 p-2 rounded overflow-hidden inline-block">
   <img
     src={`${BASE_VIDEO_URL}/manual-help/editname.png`}
-    alt="img"
+    alt="img editname"
     className="max-w-md h-auto rounded"
   />
 </div>
@@ -533,7 +533,7 @@ export default function HelpManual() {
           <div className="bg-gray-100 p-2 rounded overflow-hidden inline-block">
   <img
     src={`${BASE_VIDEO_URL}/manual-help/password.png`}
-    alt="img"
+    alt="img password"
     className="max-w-md h-auto rounded"
   />
 </div>
