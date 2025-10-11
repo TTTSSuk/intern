@@ -26,6 +26,19 @@ Object.defineProperty(global, 'localStorage', { value: localStorageMock });
 describe('AdminLogin', () => {
   const mockPush = jest.fn();
 
+  // Suppress console errors
+  const originalError = console.error;
+  beforeAll(() => {
+    console.error = (...args: any[]) => {
+      // Suppress all console.error during tests
+      return;
+    };
+  });
+
+  afterAll(() => {
+    console.error = originalError;
+  });
+
   beforeEach(() => {
     (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
     localStorage.clear();

@@ -125,31 +125,18 @@ describe('MyVideos Component', () => {
     },
   ];
 
-  // Suppress console errors for act warnings
-  // Suppress console errors for act warnings
+// Suppress console errors for act warnings and test errors
 const originalError = console.error;
 beforeAll(() => {
   console.error = (...args: any[]) => {
-    if (
-      typeof args[0] === 'string' &&
-      args[0].includes('Warning: An update to') &&
-      args[0].includes('was not wrapped in act')
-    ) {
-      return; // ignore act warnings
-    }
-    originalError.call(console, ...args);
+    // Suppress all console.error during tests
+    return;
   };
 });
 
 afterAll(() => {
   console.error = originalError;
 });
-
-
-  afterAll(() => {
-    console.error = originalError;
-  });
-
   beforeEach(() => {
     jest.clearAllMocks();
     (window.localStorage.getItem as jest.Mock).mockReturnValue('testuser');

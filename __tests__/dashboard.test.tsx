@@ -23,6 +23,14 @@ const localStorageMock = (() => {
 Object.defineProperty(global, 'localStorage', { value: localStorageMock });
 
 describe('AdminDashboard', () => {
+  const originalError = console.error;
+  beforeAll(() => {
+    console.error = () => { return; };
+  });
+  afterAll(() => {
+    console.error = originalError;
+  });
+  
   beforeEach(() => {
     (global.fetch as jest.Mock) = jest.fn();
     localStorage.clear();

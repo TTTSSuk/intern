@@ -61,6 +61,15 @@ describe('ListFile Component', () => {
   },
 ];
 
+// ⭐ เพิ่มตรงนี้ ⭐
+  const originalError = console.error;
+  beforeAll(() => {
+    console.error = () => { return; };
+  });
+  afterAll(() => {
+    console.error = originalError;
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
 

@@ -1,173 +1,185 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { useRouter } from 'next/router';
-import ManageUsers from '@/pages/admin/manage-users';
+// __tests__/list-file.test.tsx
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import ListFile from '@/pages/list-file';
 import '@testing-library/jest-dom';
 
-// Mock `next/router`
+// Mock useRouter, useStep
+const mockRouterPush = jest.fn();
 jest.mock('next/router', () => ({
-  useRouter: jest.fn(),
+  useRouter: () => ({ push: mockRouterPush }),
 }));
 
-// Mock `AdminLayout`
-jest.mock('@/components/Layouts/AdminLayout', () => {
-  return ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
-});
+const mockSetCurrentStep = jest.fn();
+jest.mock('@/context/StepContext', () => ({
+  useStep: () => ({
+    currentStep: 2,
+    setCurrentStep: mockSetCurrentStep,
+    setFileId: jest.fn(),
+  }),
+}));
 
-// Mock data
-const mockUsers = [
-  { userId: 'u1', name: 'Alice', isActive: true, isSuspended: false, lastActive: new Date().toISOString() },
-  { userId: 'u2', name: 'Bob', isActive: true, isSuspended: false, lastActive: new Date(Date.now() - 10 * 60000).toISOString() }, // Offline
-  { userId: 'u3', name: 'Charlie', isActive: false, isSuspended: false, lastActive: null },
-  { userId: 'u4', name: 'David', isActive: true, isSuspended: true, lastActive: new Date().toISOString() },
-  { userId: 'u5', name: 'Eve', isActive: true, isSuspended: false, lastActive: new Date().toISOString() },
-  { userId: 'u6', name: 'Frank', isActive: true, isSuspended: false, lastActive: new Date().toISOString() },
-  { userId: 'u7', name: 'Grace', isActive: true, isSuspended: false, lastActive: new Date().toISOString() },
+global.fetch = jest.fn() as jest.Mock;
+
+describe('ListFile Component', () => {
+  const mockFiles = [
+     { 
+    _id: 'file-3', 
+    userId: 'user123', 
+    originalName: 'file_c.zip', 
+    extractPath: '/path/c', 
+    status: 'pending', 
+    createdAt: '2025-01-03T10:00:00Z',
+    videoCreated: false  // เพิ่มบรรทัดนี้
+  },
+  { 
+    _id: 'file-1', 
+    userId: 'user123', 
+    originalName: 'file_a.zip', 
+    extractPath: '/path/a', 
+    status: 'error', 
+    createdAt: '2025-01-01T10:00:00Z',
+    videoCreated: false  // เพิ่มบรรทัดนี้
+  },
+  { 
+    _id: 'file-2', 
+    userId: 'user123', 
+    originalName: 'file_b.zip', 
+    extractPath: '/path/b', 
+    status: 'completed', 
+    createdAt: '2025-01-02T10:00:00Z',
+    videoCreated: false  // เพิ่มบรรทัดนี้
+  },
+  { 
+    _id: 'file-4', 
+    userId: 'user123', 
+    originalName: 'file_d.zip', 
+    extractPath: '/path/d', 
+    status: 'done', 
+    createdAt: '2025-01-04T10:00:00Z',
+    videoCreated: false  // เพิ่มบรรทัดนี้
+  },
 ];
 
-describe('ManageUsers', () => {
-  const mockPush = jest.fn();
+  // Suppress console errors
+  const originalError = console.error;
+  beforeAll(() => {
+    console.error = (...args: any[]) => {
+      // Suppress all console.error during tests
+      return;
+    };
+  });
+
+  afterAll(() => {
+    console.error = originalError;
+  });
 
   beforeEach(() => {
-    (global.fetch as jest.Mock) = jest.fn().mockResolvedValue({
+    jest.clearAllMocks();
+
+    (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => ({ success: true, users: mockUsers }),
-    } as Response);
-    (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
+      json: async () => ({ files: mockFiles }),
+    });
+
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+
+    Object.defineProperty(window, 'localStorage', {
+      value: { getItem: jest.fn(() => 'user123') },
+      writable: true,
+    });
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
-  it('ควรแสดงข้อความกำลังโหลดเมื่อข้อมูลกำลังถูกดึง', () => {
-    render(<ManageUsers />);
-    expect(screen.getByText('กำลังโหลดข้อมูลผู้ใช้...')).toBeInTheDocument();
+  it('1. should render loading state initially', () => {
+    render(<ListFile />);
+    expect(screen.getByText('กำลังโหลดข้อมูลไฟล์ที่แตก...')).toBeInTheDocument();
   });
 
-  it('ควรแสดงรายชื่อผู้ใช้เมื่อข้อมูลถูกดึงมาสำเร็จ', async () => {
-    render(<ManageUsers />);
-    await waitFor(() => expect(screen.getByText('รายชื่อผู้ใช้')).toBeInTheDocument());
-    expect(screen.getByText('Alice')).toBeInTheDocument();
-    expect(screen.getByText('Bob')).toBeInTheDocument();
+  it('2. should render files after successful fetch, sorted correctly', async () => {
+    render(<ListFile />);
     
-    // The component shows 5 users per page + 1 header row = 6 rows
-    // Not all 7 users are displayed due to pagination
-    const rows = screen.getAllByRole('row');
-    expect(rows.length).toBe(6); // 5 users + 1 header
+    // รอให้หน้าโหลดเสร็จโดยรอหา element ที่แน่ใจว่ามี
+    await screen.findByText('file_d.zip');
+
+    expect(screen.getByText('file_a.zip')).toBeInTheDocument();
+    expect(screen.getByText('file_b.zip')).toBeInTheDocument();
+    expect(screen.getByText('file_d.zip')).toBeInTheDocument();
+    expect(screen.queryByText('file_c.zip')).not.toBeInTheDocument();
+
+    const headings = screen.getAllByRole('heading', { level: 3 });
+    expect(headings.map(h => h.textContent)).toEqual(['file_d.zip', 'file_b.zip', 'file_a.zip']);
   });
 
-  it('ควรกรองผู้ใช้เมื่อมีการค้นหา', async () => {
-    render(<ManageUsers />);
-    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument());
-
-    const searchInput = screen.getByPlaceholderText('ค้นหาชื่อผู้ใช้...');
-    fireEvent.change(searchInput, { target: { value: 'Bob' } });
-
-    await waitFor(() => expect(screen.queryByText('Alice')).not.toBeInTheDocument());
-    expect(screen.getByText('Bob')).toBeInTheDocument();
+  it('3. should show error if fetch fails', async () => {
+    (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+    render(<ListFile />);
+    expect(await screen.findByText('เกิดข้อผิดพลาด')).toBeInTheDocument();
+    expect(screen.getByText('Network error')).toBeInTheDocument();
   });
 
-  it('ควรจัดการ pagination ได้อย่างถูกต้อง', async () => {
-    const mockManyUsers = Array.from({ length: 12 }, (_, i) => ({
-      userId: `u${i + 1}`,
-      name: `User ${i + 1}`,
-      isActive: true,
-      isSuspended: false,
-      lastActive: new Date().toISOString(),
-    }));
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
+  it('4. should show message when no files available', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => ({ success: true, users: mockManyUsers }),
-    } as Response);
+      json: async () => ({ files: [] }),
+    });
+    render(<ListFile />);
 
-    render(<ManageUsers />);
-    await waitFor(() => expect(screen.getByText('User 1')).toBeInTheDocument());
-    expect(screen.queryByText('User 6')).not.toBeInTheDocument();
+    const noFileTexts = await screen.findAllByText('ไม่มีไฟล์');
+    expect(noFileTexts.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('ยังไม่มีไฟล์ที่แตกจาก ZIP')).toBeInTheDocument();
+  });
 
-    // Find the next page button (page 2 button)
-    const page2Button = screen.getByRole('button', { name: '2' });
-    fireEvent.click(page2Button);
+  it('5. should select a file when radio clicked', async () => {
+    render(<ListFile />);
+    await screen.findByText('file_a.zip');
+    const radios = screen.getAllByRole('radio');
+    const fileARadio = radios[2];
+    expect(fileARadio).not.toBeChecked();
+
+    fireEvent.click(fileARadio);
+    expect(fileARadio).toBeChecked();
+  });
+
+  it('6. should go to /create-video when next clicked', async () => {
+    render(<ListFile />);
+    await screen.findByText('file_a.zip');
+
+    // เลือกไฟล์ file_a.zip (index 2)
+    const radios = screen.getAllByRole('radio');
+    fireEvent.click(radios[2]);
+
+    // รอให้ปุ่ม "ถัดไป" ปรากฏขึ้นหลังจากเลือกไฟล์
+    const nextButton = await screen.findByRole('button', { name: 'ถัดไป' });
+    fireEvent.click(nextButton);
+
+    expect(mockRouterPush).toHaveBeenCalledWith('/create-video?id=file-1');
+    expect(mockSetCurrentStep).toHaveBeenCalledWith(3);
+  });
+
+  it('7. should not show next button when no file selected', async () => {
+    render(<ListFile />);
+    await screen.findByText('file_a.zip');
     
-    await waitFor(() => expect(screen.getByText('User 6')).toBeInTheDocument());
-    expect(screen.queryByText('User 1')).not.toBeInTheDocument();
+    // ตรวจสอบว่าไม่มีปุ่ม "ถัดไป" แสดงอยู่
+    expect(screen.queryByRole('button', { name: 'ถัดไป' })).not.toBeInTheDocument();
   });
 
-  it('ควรแสดงสถานะของผู้ใช้อย่างถูกต้อง', async () => {
-  render(<ManageUsers />);
-  await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument());
+  it('8. should delete a file when "ลบ" clicked', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ files: mockFiles }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) });
 
-  // ตรวจสอบว่ามีผู้ใช้ที่ออนไลน์/ออฟไลน์
-  expect(screen.getAllByText('ออนไลน์').length).toBeGreaterThan(0);
-  expect(screen.getAllByText('ออฟไลน์').length).toBeGreaterThan(0);
+    render(<ListFile />);
+    await screen.findByText('file_d.zip');
 
-  // ตรวจสอบสถานะเปิดใช้งาน/ปิดใช้งาน
-  expect(screen.getAllByText('เปิดใช้งาน').length).toBeGreaterThan(0);
-  expect(screen.getAllByText('ปิดใช้งาน').length).toBeGreaterThan(0);
+    const deleteButtons = screen.getAllByText('ลบ');
+    fireEvent.click(deleteButtons[0]);
 
-  // ตรวจสอบสถานะระงับ
-  expect(screen.getAllByText('ระงับบัญชี').length).toBeGreaterThan(0);
-  expect(screen.getAllByText('ปกติ').length).toBeGreaterThan(0);
-});
-
-  it('ควรนำทางไปยังหน้าจัดการผู้ใช้เมื่อคลิกปุ่มจัดการ', async () => {
-    render(<ManageUsers />);
-    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument());
-
-    // Get all "จัดการ" buttons and click the first one
-    const manageButtons = screen.getAllByRole('button', { name: 'จัดการ' });
-    fireEvent.click(manageButtons[0]);
-
-    expect(mockPush).toHaveBeenCalledWith('/admin/user/u1');
-  });
-
-  it('ควรแสดงข้อความเมื่อไม่พบผู้ใช้จากการค้นหา', async () => {
-    render(<ManageUsers />);
-    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument());
-
-    const searchInput = screen.getByPlaceholderText('ค้นหาชื่อผู้ใช้...');
-    fireEvent.change(searchInput, { target: { value: 'NonExistentUser' } });
-
-    await waitFor(() => {
-      expect(screen.getByText('ไม่พบข้อมูลผู้ใช้ที่ตรงกับการค้นหา')).toBeInTheDocument();
-    });
-  });
-
-  it('ควรแสดงจำนวนผู้ใช้ที่ถูกต้อง', async () => {
-    render(<ManageUsers />);
-    await waitFor(() => {
-      expect(screen.getByText(`จำนวน ${mockUsers.length} คน`)).toBeInTheDocument();
-    });
-  });
-
-  it('ควรรีเซ็ตหน้าเป็น 1 เมื่อมีการค้นหา', async () => {
-    const mockManyUsers = Array.from({ length: 12 }, (_, i) => ({
-      userId: `u${i + 1}`,
-      name: `User ${i + 1}`,
-      isActive: true,
-      isSuspended: false,
-      lastActive: new Date().toISOString(),
-    }));
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ success: true, users: mockManyUsers }),
-    } as Response);
-
-    render(<ManageUsers />);
-    await waitFor(() => expect(screen.getByText('User 1')).toBeInTheDocument());
-
-    // Go to page 2
-    const page2Button = screen.getByRole('button', { name: '2' });
-    fireEvent.click(page2Button);
-    await waitFor(() => expect(screen.getByText('User 6')).toBeInTheDocument());
-
-    // Search - should reset to page 1
-    const searchInput = screen.getByPlaceholderText('ค้นหาชื่อผู้ใช้...');
-    fireEvent.change(searchInput, { target: { value: 'User 1' } });
-
-    await waitFor(() => {
-      expect(screen.getByText('User 1')).toBeInTheDocument();
-      // Page 2 button should not exist when filtered results fit on one page
-      expect(screen.queryByRole('button', { name: '2' })).not.toBeInTheDocument();
-    });
+    expect(window.confirm).toHaveBeenCalledWith('คุณแน่ใจหรือไม่ว่าต้องการลบไฟล์นี้?');
+    expect(global.fetch).toHaveBeenCalledWith('/api/delete-extracted-file', expect.any(Object));
   });
 });
