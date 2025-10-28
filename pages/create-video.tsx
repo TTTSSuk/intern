@@ -22,6 +22,7 @@ interface Clip {
 
 const BASE_VIDEO_URL = 'http://192.168.70.166:8080/';
 // const BASE_VIDEO_URL = 'http://192.168.1.119:8080/';
+// const BASE_VIDEO_URL = 'http://192.168.39.21:8080/'
 
 export default function CreateVideo() {
   const router = useRouter();

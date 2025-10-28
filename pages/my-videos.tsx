@@ -42,6 +42,7 @@ interface HistoryVideo {
 }
 
 const BASE_VIDEO_URL = "http://192.168.70.166:8080";
+// const BASE_VIDEO_URL = 'http://192.168.39.21:8080/'
 
 // Helper function to parse dates safely
 function parseDate(value: string | { $date: string } | null | undefined): Date {
