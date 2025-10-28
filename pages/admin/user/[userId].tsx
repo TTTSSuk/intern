@@ -562,7 +562,7 @@ const handleSave = async (data?: {
             <button
               onClick={async () => {
                 if (!suspensionReason.trim()) {
-                  alert("กรุณากรอกเหตุผลการระงับบัญชีด้วยครับ");
+                  alert("กรุณากรอกเหตุผลการระงับบัญชี");
                   return;
                 }
 

@@ -18,8 +18,8 @@ import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/effect-cards";
 
-
-const BASE_VIDEO_URL = "http://192.168.70.166:8080"
+const BASE_VIDEO_URL = process.env.NEXT_PUBLIC_BASE_VIDEO_URL;
+// const BASE_VIDEO_URL = "http://192.168.70.166:8080"
 // const BASE_VIDEO_URL = 'http://192.168.39.21:8080/'
 
 interface UserProfile {

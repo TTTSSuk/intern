@@ -20,7 +20,8 @@ interface Clip {
   createdAt?: string;
 }
 
-const BASE_VIDEO_URL = 'http://192.168.70.166:8080/';
+const BASE_VIDEO_URL = process.env.NEXT_PUBLIC_BASE_VIDEO_URL;
+// const BASE_VIDEO_URL = 'http://192.168.70.166:8080/';
 // const BASE_VIDEO_URL = 'http://192.168.1.119:8080/';
 // const BASE_VIDEO_URL = 'http://192.168.39.21:8080/'
 
@@ -698,7 +699,8 @@ async function confirmStartVideo() {
                       <video 
                         className="w-full h-40 object-cover" 
                         controls 
-                        src={`${BASE_VIDEO_URL}${clip.video}`}
+                        src={`${BASE_VIDEO_URL}/${clip.video}`}
+                        // src={`${BASE_VIDEO_URL}${clip.video}`}
                         poster="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDMyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjE2MCIgY3k9IjkwIiByPSIzMCIgZmlsbD0iIzZCNzI4MCIvPgo8cGF0aCBkPSJNMTUwIDc1TDE3NSA5MEwxNTAgMTA1VjEwNVY3NVoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo="
                       />
                     )}
@@ -727,7 +729,8 @@ async function confirmStartVideo() {
                 <video 
                   className="w-full max-h-96 object-contain" 
                   controls 
-                  src={`${BASE_VIDEO_URL}${finalVideo.finalVideo}`}
+                  src={`${BASE_VIDEO_URL}/${finalVideo.finalVideo}`}
+                  // src={`${BASE_VIDEO_URL}${finalVideo.finalVideo}`}
                 />
                 <div className="p-4 bg-gray-50">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
@@ -738,7 +741,8 @@ async function confirmStartVideo() {
                       </p>
                     </div>
                     <a 
-                      href={`${BASE_VIDEO_URL}${finalVideo.finalVideo}`} 
+                      href={`${BASE_VIDEO_URL}/${finalVideo.finalVideo}`}
+                      // href={`${BASE_VIDEO_URL}${finalVideo.finalVideo}`} 
                       download="final_video.mp4" 
                       className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                     >
