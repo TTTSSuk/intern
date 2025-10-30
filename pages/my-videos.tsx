@@ -342,24 +342,36 @@ const closeVideoDetail = () => {
   };
 
   // ฟังก์ชันสำหรับกรองวิดีโอ
-  const filteredVideos = videos.filter((video) => {
-    const matchesSearchTerm =
-      video.originalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (video.executionIdHistory?.executionId?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+ // แก้ไขแบบ Safe และครบถ้วน:
+const filteredVideos = videos.filter((video) => {
+  if (!video) return false; // เผื่อมี null/undefined ใน array
+  
+  const searchLower = searchTerm.toLowerCase();
+  
+  // ตรวจสอบทีละขั้นตอน
+  const matchesName = video.originalName?.toLowerCase().includes(searchLower) ?? false;
+  
+  const matchesExecutionId = 
+    video.executionIdHistory && 
+    typeof video.executionIdHistory.executionId === 'string'
+      ? video.executionIdHistory.executionId.toLowerCase().includes(searchLower)
+      : false;
+  
+  const matchesSearchTerm = matchesName || matchesExecutionId;
 
-    const videoDate = parseDate(video.createdAt);
-    const matchesDateFrom = dateFrom ? videoDate >= new Date(dateFrom) : true;
-    const matchesDateTo = dateTo
-      ? videoDate <= new Date(new Date(dateTo).setHours(23, 59, 59, 999))
-      : true;
+  const videoDate = parseDate(video.createdAt);
+  const matchesDateFrom = dateFrom ? videoDate >= new Date(dateFrom) : true;
+  const matchesDateTo = dateTo
+    ? videoDate <= new Date(new Date(dateTo).setHours(23, 59, 59, 999))
+    : true;
 
-    const matchesStatus =
-      statusFilter === "all" ||
-      video.executionIdHistory?.workflowStatus === statusFilter ||
-      video.status === statusFilter;
+  const matchesStatus =
+    statusFilter === "all" ||
+    video.executionIdHistory?.workflowStatus === statusFilter ||
+    video.status === statusFilter;
 
-    return matchesSearchTerm && matchesDateFrom && matchesDateTo && matchesStatus;
-  });
+  return matchesSearchTerm && matchesDateFrom && matchesDateTo && matchesStatus;
+});
 
   // คำนวณข้อมูลสำหรับ Pagination
   const totalPages = Math.ceil(filteredVideos.length / itemsPerPage);

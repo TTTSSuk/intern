@@ -12,7 +12,8 @@ export default async function handler(
     return (res as any).status(405).json({ error: 'Method not allowed' });
   }
 
-  const { userId, selectedClipUrls } = req.body;
+  // 🔥 เพิ่ม originalName ในการรับข้อมูล
+  const { userId, selectedClipUrls, originalName } = req.body;
 
   if (!userId || !selectedClipUrls || !Array.isArray(selectedClipUrls)) {
     return (res as any).status(400).json({ error: 'userId and selectedClipUrls (array) are required' });
@@ -20,6 +21,11 @@ export default async function handler(
 
   if (selectedClipUrls.length === 0) {
     return (res as any).status(400).json({ error: 'selectedClipUrls cannot be empty' });
+  }
+
+  // 🔥 เพิ่มการตรวจสอบ originalName
+  if (!originalName || !originalName.trim()) {
+    return (res as any).status(400).json({ error: 'originalName is required' });
   }
 
   try {
@@ -47,10 +53,11 @@ export default async function handler(
       return `/extracted/${clipUrl}`;
     });
 
-    // สร้าง document
+    // 🔥 สร้าง document พร้อม originalName
     const newDoc = {
       userId,
       jobType: 'subvideos',
+      originalName: originalName.trim(), // 🔥 เพิ่มบรรทัดนี้
       selectedClipUrls, // เก็บ path เดิม
       folderName,
       extractPath,
@@ -62,6 +69,8 @@ export default async function handler(
 
     const insertResult = await collection.insertOne(newDoc);
     const _id = insertResult.insertedId.toString();
+
+    console.log(`✅ Created document with originalName: ${originalName.trim()}`);
 
     // แปลง path สำหรับ container
     const containerExtractPath = extractPath.replace(/^\.\/uploads\/extracted/, '/extracted');
@@ -75,7 +84,8 @@ export default async function handler(
       body: JSON.stringify({
         _id,
         extractPath: containerExtractPath,
-        selectedClipUrls: containerClipUrls
+        selectedClipUrls: containerClipUrls,
+        originalName: originalName.trim() // 🔥 ส่งไปยัง n8n ด้วย (ถ้าต้องการใช้)
       }),
     });
 
@@ -114,7 +124,8 @@ export default async function handler(
       executionId,
       _id,
       folderName,
-      extractPath
+      extractPath,
+      originalName: originalName.trim() // 🔥 ส่งกลับไปด้วย
     });
 
   } catch (err) {
