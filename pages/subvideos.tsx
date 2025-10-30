@@ -142,8 +142,12 @@ export default function SelectClips() {
       setOriginalName("");
 
       setTimeout(() => {
-        router.push(`/subvideos-status?id=${result._id}`);
-      }, 2000);
+  router.push(`/create-video?id=${result._id}`); // 🔥 ใช้หน้าเดียวกัน
+}, 2000);
+
+      // setTimeout(() => {
+      //   router.push(`/subvideos-status?id=${result._id}`);
+      // }, 2000);
 
     } catch (error) {
       console.error("Error sending clips:", error);

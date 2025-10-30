@@ -142,7 +142,8 @@ export default async function handler(
           status: 'queued',
           queuePosition: nextPosition,
           updatedAt: now,
-          tokensReserved: requiredTokens // 🔥 เก็บจำนวน token ที่จองไว้
+          tokensReserved: requiredTokens, // 🔥 เก็บจำนวน token ที่จองไว้
+          jobType: 'normal' // 🔥 เพิ่มบรรทัดนี้
         },
         $unset: {
           startTime: '',
