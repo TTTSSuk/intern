@@ -30,7 +30,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         executionIdHistory: 1,
         folders: 1,
         extractPath: 1,
-        jobType: 1
+        jobType: 1,
+        selectedClipUrls: 1
       })
       .sort({ createdAt: -1 })
       .toArray();

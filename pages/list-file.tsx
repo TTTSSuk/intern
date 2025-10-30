@@ -20,6 +20,7 @@ interface Folder {
   folders?: Folder[];
   videoCreated?: boolean;
   originalFilePath?: string;
+  jobType?: string;
 }
 
 interface ValidationError {
@@ -115,7 +116,7 @@ export default function ListFile() {
         // ✅ กรองออกไฟล์ที่กำลัง processing หรือ pending
         const filteredFiles = data.files.filter((file: ExtractedFile) => {
           const status = file.status.toLowerCase();
-          return status !== 'running' && status !== 'processing' && status !== 'pending';
+          return status !== 'running' && status !== 'processing' && status !== 'pending'  && file.jobType !== 'subvideos';
         });
         
         // ⭐ เพิ่มการจัดเรียงไฟล์ก่อน setFiles

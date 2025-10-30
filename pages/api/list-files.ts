@@ -48,7 +48,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const rawFiles = await videosCollection
       .find(
-        { userId, status: { $ne: 'deleted' } },
+        { userId, 
+          status: { $ne: 'deleted' },
+          jobType: { $ne: 'subvideos' }
+         },
         {
           projection: {
             _id: 1,

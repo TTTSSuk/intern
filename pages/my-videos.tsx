@@ -39,16 +39,16 @@ interface HistoryVideo {
   folders?: Folders;
   clips: Clip[];
   executionIdHistory?: ExecutionHistory;
+  jobType?: string;
+  selectedClipUrls?: string[];
 }
 
 const BASE_VIDEO_URL = process.env.NEXT_PUBLIC_BASE_VIDEO_URL;
-// const BASE_VIDEO_URL = "http://192.168.70.166:8080";
-// const BASE_VIDEO_URL = 'http://192.168.39.21:8080/'
 
 // Helper function to parse dates safely
 function parseDate(value: string | { $date: string } | null | undefined): Date {
   if (!value) {
-    return new Date(); // Return current date as fallback
+    return new Date();
   }
   
   if (typeof value === "string") {
@@ -92,7 +92,6 @@ function getClipSource(video: HistoryVideo, clipIndex: number) {
     return { sourceImage: "N/A", promptFile: "N/A" };
   }
 
-  // หา subfolder ที่ตรงกับ folderName ของ clip
   const subfolder = video.folders.subfolders.find(sf => sf.name === folderName);
 
   if (!subfolder || !subfolder.files) {
@@ -102,7 +101,6 @@ function getClipSource(video: HistoryVideo, clipIndex: number) {
   const imageFile = subfolder.files.find((f) => f.match(/\.(jpg|jpeg|png|gif)$/i)) ?? "";
   const txtFile = subfolder.files.find((f) => f.endsWith("prompt.txt")) ?? "";
 
-  // ต้องการ: 192.168.70.166:8080/1759898782252/01/bee.png
   const basePath = video.extractPath.replace("./uploads/extracted/", "");
   const sourceImage = imageFile
     ? `${BASE_VIDEO_URL}/${basePath}/${folderName}/${imageFile}`
@@ -243,6 +241,99 @@ function GeneratedClips({
   );
 }
 
+// Component สำหรับแสดง Selected Clips ของ Merge Video
+function SelectedClipsPreview({ video }: { video: HistoryVideo }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  if (!video.selectedClipUrls || video.selectedClipUrls.length === 0) {
+    return null;
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 rounded-lg border border-purple-200 transition-all duration-200 group"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+          <div className="text-left">
+            <h5 className="text-sm font-semibold text-slate-700 group-hover:text-purple-700 transition-colors">
+              Selected Clips
+            </h5>
+            <p className="text-xs text-slate-500">
+              {video.selectedClipUrls.length} clips merged
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded-full font-medium">
+            {video.selectedClipUrls.length}
+          </span>
+          <svg
+            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+              isExpanded ? "rotate-180" : ""
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="mt-3 p-3 bg-white rounded-lg border border-slate-200">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {video.selectedClipUrls.map((clipUrl, idx) => {
+              const videoUrl = `${BASE_VIDEO_URL}/${clipUrl}`;
+              return (
+                <div
+                  key={`selected-${idx}`}
+                  className="bg-slate-50 rounded-lg p-3 hover:bg-slate-100 transition-colors"
+                >
+                  <video
+                    src={videoUrl}
+                    controls
+                    className="w-full rounded-md mb-2 shadow-sm"
+                    style={{ maxHeight: "160px" }}
+                  />
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
+                    <p className="text-xs text-slate-600 font-medium">
+                      Source Clip {idx + 1}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // FinalVideo Component
 function FinalVideo({ video }: { video: HistoryVideo }) {
   const clips = video.clips ?? [];
@@ -296,12 +387,13 @@ function FinalVideo({ video }: { video: HistoryVideo }) {
 export default function HistoryVideos() {
   const [videos, setVideos] = useState<HistoryVideo[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [searchTerm, setSearchTerm] = useState<string>(""); // ค้นหาชื่อหรือ ID
-  const [dateFrom, setDateFrom] = useState<string>(""); // วันที่เริ่มต้น
-  const [dateTo, setDateTo] = useState<string>(""); // วันที่สิ้นสุด
-  const [statusFilter, setStatusFilter] = useState<string>("all"); // สถานะ (all, completed, running, error)
-  const [showFilterModal, setShowFilterModal] = useState<boolean>(false); // Modal สำหรับตัวกรอง
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showFilterModal, setShowFilterModal] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState<"ai" | "merge">("ai");
   const itemsPerPage = 9;
   const [selectedClip, setSelectedClip] = useState<{
     index: number;
@@ -309,21 +401,17 @@ export default function HistoryVideos() {
     video: HistoryVideo;
   } | null>(null);
 
-  // const [expandedVideos, setExpandedVideos] = useState<Set<string>>(new Set());
+  const [selectedVideo, setSelectedVideo] = useState<HistoryVideo | null>(null);
 
-// เพิ่ม state สำหรับ video detail modal
-const [selectedVideo, setSelectedVideo] = useState<HistoryVideo | null>(null);
+  const openVideoDetail = (video: HistoryVideo) => {
+    setSelectedVideo(video);
+    document.body.style.overflow = "hidden";
+  };
 
-// แทนที่ toggleVideoExpand
-const openVideoDetail = (video: HistoryVideo) => {
-  setSelectedVideo(video);
-  document.body.style.overflow = "hidden";
-};
-
-const closeVideoDetail = () => {
-  setSelectedVideo(null);
-  document.body.style.overflow = "unset";
-};
+  const closeVideoDetail = () => {
+    setSelectedVideo(null);
+    document.body.style.overflow = "unset";
+  };
 
   const openModal = (clip: Clip, video: HistoryVideo, index: number) => {
     setSelectedClip({ clip, video, index });
@@ -341,48 +429,48 @@ const closeVideoDetail = () => {
     }
   };
 
-  // ฟังก์ชันสำหรับกรองวิดีโอ
- // แก้ไขแบบ Safe และครบถ้วน:
-const filteredVideos = videos.filter((video) => {
-  if (!video) return false; // เผื่อมี null/undefined ใน array
-  
-  const searchLower = searchTerm.toLowerCase();
-  
-  // ตรวจสอบทีละขั้นตอน
-  const matchesName = video.originalName?.toLowerCase().includes(searchLower) ?? false;
-  
-  const matchesExecutionId = 
-    video.executionIdHistory && 
-    typeof video.executionIdHistory.executionId === 'string'
-      ? video.executionIdHistory.executionId.toLowerCase().includes(searchLower)
-      : false;
-  
-  const matchesSearchTerm = matchesName || matchesExecutionId;
+  // แยกวิดีโอตาม tab
+  const aiGeneratedVideos = videos.filter(v => v.jobType !== "subvideos");
+  const mergeVideos = videos.filter(v => v.jobType === "subvideos");
 
-  const videoDate = parseDate(video.createdAt);
-  const matchesDateFrom = dateFrom ? videoDate >= new Date(dateFrom) : true;
-  const matchesDateTo = dateTo
-    ? videoDate <= new Date(new Date(dateTo).setHours(23, 59, 59, 999))
-    : true;
+  // เลือก videos ตาม active tab
+  const displayVideos = activeTab === "ai" ? aiGeneratedVideos : mergeVideos;
 
-  const matchesStatus =
-    statusFilter === "all" ||
-    video.executionIdHistory?.workflowStatus === statusFilter ||
-    video.status === statusFilter;
+  // กรองวิดีโอ
+  const filteredVideos = displayVideos.filter((video) => {
+    if (!video) return false;
+    
+    const searchLower = searchTerm.toLowerCase();
+    const matchesName = video.originalName?.toLowerCase().includes(searchLower) ?? false;
+    const matchesExecutionId = 
+      video.executionIdHistory && 
+      typeof video.executionIdHistory.executionId === 'string'
+        ? video.executionIdHistory.executionId.toLowerCase().includes(searchLower)
+        : false;
+    const matchesSearchTerm = matchesName || matchesExecutionId;
 
-  return matchesSearchTerm && matchesDateFrom && matchesDateTo && matchesStatus;
-});
+    const videoDate = parseDate(video.createdAt);
+    const matchesDateFrom = dateFrom ? videoDate >= new Date(dateFrom) : true;
+    const matchesDateTo = dateTo
+      ? videoDate <= new Date(new Date(dateTo).setHours(23, 59, 59, 999))
+      : true;
 
-  // คำนวณข้อมูลสำหรับ Pagination
+    const matchesStatus =
+      statusFilter === "all" ||
+      video.executionIdHistory?.workflowStatus === statusFilter ||
+      video.status === statusFilter;
+
+    return matchesSearchTerm && matchesDateFrom && matchesDateTo && matchesStatus;
+  });
+
   const totalPages = Math.ceil(filteredVideos.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentVideos = filteredVideos.slice(startIndex, endIndex);
 
-  // Reset หน้าเมื่อมีการกรอง
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, dateFrom, dateTo, statusFilter]);
+  }, [searchTerm, dateFrom, dateTo, statusFilter, activeTab]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -399,12 +487,6 @@ const filteredVideos = videos.filter((video) => {
         const data: HistoryVideo[] = await res.json();
         const generatedVideos = data.filter((v) => v.executionIdHistory);
         setVideos(generatedVideos);
-        
-        console.log('Fetched videos:', generatedVideos);
-        generatedVideos.forEach((video, index) => {
-          console.log(`Video ${index + 1} clips:`, video.clips);
-          console.log(`Video ${index + 1} has clips with video:`, video.clips.some(c => c.video));
-        });
       } catch (error) {
         console.error(error);
         setLoading(false);
@@ -418,14 +500,12 @@ const filteredVideos = videos.filter((video) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Clean up body overflow when component unmounts and on modal close
   useEffect(() => {
     return () => {
       document.body.style.overflow = "unset";
     };
   }, []);
 
-  // Handle escape key to close modal
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape" && selectedClip) {
@@ -562,11 +642,47 @@ const filteredVideos = videos.filter((video) => {
             </div>
           </div>
 
+          {/* Tab Navigation */}
+          <div className="flex items-center gap-2 mb-6">
+            <button
+              onClick={() => setActiveTab("ai")}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+                activeTab === "ai"
+                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg"
+                  : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              <span>AI Generate</span>
+              <span className="ml-1 px-2 py-0.5 bg-white/20 rounded-full text-xs">
+                {aiGeneratedVideos.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab("merge")}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+                activeTab === "merge"
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg"
+                  : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+              </svg>
+              <span>Merge Video</span>
+              <span className="ml-1 px-2 py-0.5 bg-white/20 rounded-full text-xs">
+                {mergeVideos.length}
+              </span>
+            </button>
+          </div>
+
           {(searchTerm || dateFrom || dateTo || statusFilter !== "all") && (
             <div className="flex items-center justify-between">
               <p className="text-slate-600 ml-13">Track your video processing journey</p>
               <p className="text-sm text-slate-500">
-                แสดง {filteredVideos.length} จาก {videos.length} วิดีโอ
+                แสดง {filteredVideos.length} จาก {displayVideos.length} วิดีโอ
               </p>
             </div>
           )}
@@ -686,75 +802,75 @@ const filteredVideos = videos.filter((video) => {
 
         {/* Pagination - Top */}
         {totalPages > 1 && (
-  <div className="mb-4 flex items-center justify-between">
-    <div className="text-xs text-slate-600">
-      แสดง {startIndex + 1}-{Math.min(endIndex, filteredVideos.length)} จาก {filteredVideos.length} วิดีโอ
-    </div>
-    
-    <div className="flex items-center gap-1.5">
-      <button
-        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-        disabled={currentPage === 1}
-        className={`px-2 py-1.5 rounded-lg transition-all ${
-          currentPage === 1
-            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-            : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
-        }`}
-      >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-      </button>
-
-      <div className="flex items-center gap-0.5">
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-          if (
-            page === 1 ||
-            page === totalPages ||
-            (page >= currentPage - 1 && page <= currentPage + 1)
-          ) {
-            return (
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-xs text-slate-600">
+              แสดง {startIndex + 1}-{Math.min(endIndex, filteredVideos.length)} จาก {filteredVideos.length} วิดีโอ
+            </div>
+            
+            <div className="flex items-center gap-1.5">
               <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`w-7 h-7 rounded-lg text-xs transition-all ${
-                  currentPage === page
-                    ? "bg-indigo-600 text-white shadow-sm"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className={`px-2 py-1.5 rounded-lg transition-all ${
+                  currentPage === 1
+                    ? "bg-slate-100 text-slate-400 cursor-not-allowed"
                     : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
                 }`}
               >
-                {page}
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
               </button>
-            );
-          } else if (page === currentPage - 2 || page === currentPage + 2) {
-            return (
-              <span key={page} className="px-0.5 text-slate-400 text-xs">
-                ...
-              </span>
-            );
-          }
-          return null;
-        })}
-      </div>
 
-      <button
-        onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-        disabled={currentPage === totalPages}
-        className={`px-2 py-1.5 rounded-lg transition-all ${
-          currentPage === totalPages
-            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-            : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
-        }`}
-      >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-    </div>
-  </div>
-)}
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-7 h-7 rounded-lg text-xs transition-all ${
+                          currentPage === page
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return (
+                      <span key={page} className="px-0.5 text-slate-400 text-xs">
+                        ...
+                      </span>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
 
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className={`px-2 py-1.5 rounded-lg transition-all ${
+                  currentPage === totalPages
+                    ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                    : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {currentVideos.map((video) => {
             const videoId = video._id.$oid;
             const clipCount = video.clips?.filter(c => c.video || c.finalVideo).length || 0;
@@ -765,23 +881,23 @@ const filteredVideos = videos.filter((video) => {
                 className="group bg-white rounded-xl shadow-sm hover:shadow-md border border-slate-200 transition-all duration-300 overflow-hidden"
               >
                 <div 
-  className="p-4 cursor-pointer"
-  onClick={() => openVideoDetail(video)}
->
+                  className="p-4 cursor-pointer"
+                  onClick={() => openVideoDetail(video)}
+                >
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1 min-w-0 pr-3">
                       <h2 className="text-base font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors truncate">
                         {video.originalName}
                       </h2>
                       <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-  {video.createdAt ? formatDateTime(parseDate(video.createdAt)) : "Unknown"}
-</div>
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {video.createdAt ? formatDateTime(parseDate(video.createdAt)) : "Unknown"}
+                      </div>
                     </div>
                     <svg
-                      className={`w-4 h-4 text-slate-400 transition-transform duration-200 flex-shrink-0 `}
+                      className="w-4 h-4 text-slate-400 transition-transform duration-200 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -815,7 +931,7 @@ const filteredVideos = videos.filter((video) => {
               </div>
             );
           })}
-</div> 
+        </div> 
 
         {searchTerm && filteredVideos.length === 0 && (
           <div className="text-center py-12">
@@ -850,8 +966,8 @@ const filteredVideos = videos.filter((video) => {
         )}
 
         {selectedClip && (
-  <div className="fixed inset-0 z-[60] bg-black/10 backdrop-blur-[1px] animate-in fade-in duration-300 flex items-center justify-center p-4"
-    style={{
+          <div className="fixed inset-0 z-[60] bg-black/10 backdrop-blur-[1px] animate-in fade-in duration-300 flex items-center justify-center p-4"
+            style={{
               position: "fixed",
               top: 0,
               left: 0,
@@ -902,18 +1018,11 @@ const filteredVideos = videos.filter((video) => {
                     );
                     return sourceImage !== "N/A" ? (
                       <img
-  src={sourceImage}
-  alt="Source"
-  className="w-11/12 max-w-md mx-auto max-h-[50vh] rounded-lg shadow border"
-  style={{ objectFit: "contain" }}
-/>
-
-                      // <img
-                      //   src={sourceImage}
-                      //   alt="Source"
-                      //   className="w-full rounded-lg shadow border"
-                      //   style={{ height: "200px", objectFit: "cover" }}
-                      // />
+                        src={sourceImage}
+                        alt="Source"
+                        className="w-11/12 max-w-md mx-auto max-h-[50vh] rounded-lg shadow border"
+                        style={{ objectFit: "contain" }}
+                      />
                     ) : (
                       <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">
                         No source image available
@@ -921,83 +1030,114 @@ const filteredVideos = videos.filter((video) => {
                     );
                   })()}
                 </div>
-                
               </div>
             </div>
           </div>
         )}
 
         {/* Video Detail Modal */}
-{selectedVideo && (
- <div
-  className="fixed inset-0 z-[50] bg-black/10 backdrop-blur-[1px] animate-in fade-in duration-300 flex items-center justify-center p-4"
-    onClick={(e) => {
-      if (e.target === e.currentTarget) closeVideoDetail();
-    }}
-  >
-    <div
-  className="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto custom-scrollbar"
-   
-  onClick={(e) => e.stopPropagation()}
-  style={{
-    scrollbarWidth: 'thin',
-    scrollbarColor: '#cbd5e1 transparent'
-  }}
->
-      {/* Header */}
-      <div className="sticky top-0 bg-white border-b border-slate-200 p-6 rounded-t-2xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-800">{selectedVideo.originalName}</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              Created: {formatDateTime(parseDate(selectedVideo.createdAt))}
-            </p>
-          </div>
-          <button
-            onClick={closeVideoDetail}
-            className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+        {selectedVideo && (
+          <div
+            className="fixed inset-0 z-[50] bg-black/10 backdrop-blur-[1px] animate-in fade-in duration-300 flex items-center justify-center p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) closeVideoDetail();
+            }}
           >
-            <XMarkIcon className="w-5 h-5 text-slate-600" />
-          </button>
-        </div>
-      </div>
+            <div
+              className="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto custom-scrollbar"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#cbd5e1 transparent'
+              }}
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-white border-b border-slate-200 p-6 rounded-t-2xl z-10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-800">{selectedVideo.originalName}</h2>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Created: {formatDateTime(parseDate(selectedVideo.createdAt))}
+                    </p>
+                  </div>
+                  <button
+                    onClick={closeVideoDetail}
+                    className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+                  >
+                    <XMarkIcon className="w-5 h-5 text-slate-600" />
+                  </button>
+                </div>
+              </div>
 
-      {/* Content */}
-      <div className="p-6 space-y-6">
-        {/* Workflow Details */}
-        {selectedVideo.executionIdHistory && (
-          <div className="bg-slate-50 rounded-xl p-5">
-            <h3 className="font-semibold text-slate-700 mb-4">Workflow Details</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <span className="text-xs text-slate-500">Execution ID</span>
-                <code className="block bg-white px-3 py-2 rounded-lg text-sm font-mono mt-1">
-                  {selectedVideo.executionIdHistory.executionId}
-                </code>
-              </div>
-              <div>
-                <span className="text-xs text-slate-500">Status</span>
-                <p className="text-slate-700 mt-1 font-medium">{selectedVideo.executionIdHistory.workflowStatus}</p>
-              </div>
-              <div>
-                <span className="text-xs text-slate-500">Started</span>
-                <p className="text-slate-700 mt-1">{formatDateTime(parseDate(selectedVideo.executionIdHistory.startTime))}</p>
-              </div>
-              <div>
-                <span className="text-xs text-slate-500">Ended</span>
-                <p className="text-slate-700 mt-1">{formatDateTime(parseDate(selectedVideo.executionIdHistory.endTime))}</p>
+              {/* Content */}
+              <div className="p-6 space-y-6">
+                {/* Workflow Details */}
+                {selectedVideo.executionIdHistory && (
+                  <div className="bg-slate-50 rounded-xl p-5">
+                    <h3 className="font-semibold text-slate-700 mb-4">Workflow Details</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-xs text-slate-500">Execution ID</span>
+                        <code className="block bg-white px-3 py-2 rounded-lg text-sm font-mono mt-1">
+                          {selectedVideo.executionIdHistory.executionId}
+                        </code>
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-500">Status</span>
+                        <p className="text-slate-700 mt-1 font-medium">{selectedVideo.executionIdHistory.workflowStatus}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-500">Started</span>
+                        <p className="text-slate-700 mt-1">{formatDateTime(parseDate(selectedVideo.executionIdHistory.startTime))}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-500">Ended</span>
+                        <p className="text-slate-700 mt-1">{formatDateTime(parseDate(selectedVideo.executionIdHistory.endTime))}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Selected Clips Paths for Merge Videos */}
+                {/* {selectedVideo.jobType === "subvideos" && selectedVideo.selectedClipUrls && selectedVideo.selectedClipUrls.length > 0 && (
+                  <div className="bg-purple-50 rounded-xl p-5 border border-purple-200">
+                    <h3 className="font-semibold text-purple-900 mb-4 flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Source Clip Paths ({selectedVideo.selectedClipUrls.length})
+                    </h3>
+                    <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                      {selectedVideo.selectedClipUrls.map((clipPath, idx) => (
+                        <div key={idx} className="bg-white rounded-lg p-3 border border-purple-100">
+                          <div className="flex items-start gap-2">
+                            <span className="flex-shrink-0 w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs font-semibold">
+                              {idx + 1}
+                            </span>
+                            <code className="flex-1 text-xs font-mono text-slate-700 break-all">
+                              {clipPath}
+                            </code>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )} */}
+
+                {/* แสดง Selected Clips สำหรับ Merge Video */}
+                {selectedVideo.jobType === "subvideos" && (
+                  <SelectedClipsPreview video={selectedVideo} />
+                )}
+
+                {/* Generated Clips & Final Video */}
+                {selectedVideo.jobType !== "subvideos" && (
+                  <GeneratedClips video={selectedVideo} openModal={openModal} />
+                )}
+                <FinalVideo video={selectedVideo} />
               </div>
             </div>
           </div>
         )}
-
-        {/* Generated Clips & Final Video */}
-        <GeneratedClips video={selectedVideo} openModal={openModal} />
-        <FinalVideo video={selectedVideo} />
-      </div>
-    </div>
-  </div>
-)}
       </div>
     </div>
   );
