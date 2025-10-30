@@ -109,47 +109,92 @@ export default function SelectClips() {
   };
 
   // ฟังก์ชันส่งคลิปที่เลือกไปยัง n8n
-  const handleSendToN8n = async () => {
-    if (selectedClips.length === 0) {
-      setMessage("กรุณาเลือกคลิปอย่างน้อย 1 คลิป");
-      return;
-    }
-    if (!N8N_WORKFLOW_URL) {
-    setMessage("ยังไม่ได้กำหนด URL ของ n8n workflow");
+ const handleSendToN8n = async () => {
+  if (selectedClips.length === 0) {
+    setMessage("กรุณาเลือกคลิปอย่างน้อย 1 คลิป");
     return;
-}
+  }
 
-    setSending(true);
-    setMessage("กำลังส่งข้อมูล...");
+  setSending(true);
+  setMessage("กำลังส่งข้อมูล...");
 
-    try {
-      const response = await fetch(N8N_WORKFLOW_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: userId, // ส่ง userId ไปด้วย (เผื่อ n8n ต้องการ)
-          selectedClipUrls: selectedClips, // ส่ง array ที่เรียงตามลำดับการเลือก
-        }),
-      });
+  try {
+    const response = await fetch('/api/start-subvideos', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: userId,
+        selectedClipUrls: selectedClips,
+      }),
+    });
 
-      if (!response.ok) {
-        throw new Error(`n8n workflow failed with status: ${response.status}`);
-      }
-
-      const result = await response.json(); // อ่าน response จาก n8n (ถ้ามี)
-      setMessage(`ส่งคลิป ${selectedClips.length} คลิปสำเร็จ!`);
-      setSelectedClips([]); // ล้างรายการที่เลือก
-      console.log("n8n response:", result);
-
-    } catch (error) {
-      console.error("Error sending clips to n8n:", error);
-      setMessage(`เกิดข้อผิดพลาดในการส่งข้อมูล: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setSending(false);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `API failed with status: ${response.status}`);
     }
-  };
+
+    const result = await response.json();
+    console.log("API response:", result);
+    
+    setMessage(`ส่งคลิป ${selectedClips.length} คลิปสำเร็จ! กำลังประมวลผล...`);
+    setSelectedClips([]);
+
+    // 🔥 (แนะนำ) redirect ไปหน้าดูสถานะ
+    setTimeout(() => {
+      router.push(`/subvideos-status?id=${result._id}`);
+    }, 2000);
+
+  } catch (error) {
+    console.error("Error sending clips:", error);
+    setMessage(`เกิดข้อผิดพลาด: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } finally {
+    setSending(false);
+  }
+};
+
+//   const handleSendToN8n = async () => {
+//     if (selectedClips.length === 0) {
+//       setMessage("กรุณาเลือกคลิปอย่างน้อย 1 คลิป");
+//       return;
+//     }
+//     if (!N8N_WORKFLOW_URL) {
+//     setMessage("ยังไม่ได้กำหนด URL ของ n8n workflow");
+//     return;
+// }
+
+//     setSending(true);
+//     setMessage("กำลังส่งข้อมูล...");
+
+//     try {
+//       const response = await fetch(N8N_WORKFLOW_URL, {
+//         method: 'POST',
+//         headers: {
+//           'Content-Type': 'application/json',
+//         },
+//         body: JSON.stringify({
+//           userId: userId, // ส่ง userId ไปด้วย (เผื่อ n8n ต้องการ)
+//           selectedClipUrls: selectedClips, // ส่ง array ที่เรียงตามลำดับการเลือก
+//         }),
+//       });
+
+//       if (!response.ok) {
+//         throw new Error(`n8n workflow failed with status: ${response.status}`);
+//       }
+
+//       const result = await response.json(); // อ่าน response จาก n8n (ถ้ามี)
+//       setMessage(`ส่งคลิป ${selectedClips.length} คลิปสำเร็จ!`);
+//       setSelectedClips([]); // ล้างรายการที่เลือก
+//       console.log("n8n response:", result);
+
+//     } catch (error) {
+//       console.error("Error sending clips to n8n:", error);
+//       setMessage(`เกิดข้อผิดพลาดในการส่งข้อมูล: ${error instanceof Error ? error.message : 'Unknown error'}`);
+//     } finally {
+//       setSending(false);
+//     }
+//   };
 
   const BASE_VIDEO_URL = process.env.NEXT_PUBLIC_BASE_VIDEO_URL || ""; // ดึง Base URL มาใช้
 
