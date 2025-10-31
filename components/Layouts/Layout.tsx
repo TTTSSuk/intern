@@ -163,6 +163,12 @@ export default function Layout({
             >
               รายการไฟล์
             </button>
+             <button
+              onClick={() => router.push("/subvideos")}
+              className="hover:text-indigo-600 transition"
+            >
+              รวมวิดีโอ
+            </button>
             <button
               onClick={() => router.push("/my-videos")}
               className="hover:text-indigo-600 transition"
