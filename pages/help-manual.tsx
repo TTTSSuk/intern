@@ -297,7 +297,9 @@ export default function HelpManual() {
     {
       id: '5',
       title: '5. การสร้างวิดีโอ',
-      icon: <Video className="w-5 h-5" />,
+      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>,
       content: (
         <div className="space-y-4">
           <div className="flex justify-center">
@@ -401,9 +403,94 @@ export default function HelpManual() {
         </div>
       )
     },
+   {
+  id: '6',
+  title: '6. การรวมวิดีโอ',
+  icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+    </svg>
+  ),
+  content: (
+    <div className="space-y-4">
+      <div className="border-l-4 border-blue-500 p-4 rounded">
+        <div className="pl-4 space-y-3"> {/* ✅ ใช้เหมือน id 1 */}
+
+          {/* ขั้นตอนที่ 1 */}
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-1">1</div>
+            <div className="space-y-2">
+              <p className="font-medium text-gray-800">คลิก "เลือกวิดีโอ" ตามลำดับที่ต้องการ</p>
+              <div className="flex justify-center">
+                <div className="bg-gray-100 p-2 rounded overflow-hidden">
+                  <img
+                    src={`${BASE_VIDEO_URL}/manual-help/mergevdo.png`}
+                    alt="img mergevdo"
+                    className="max-w-md h-auto rounded"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ขั้นตอนที่ 2 */}
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-1">2</div>
+            <div>
+              <p className="font-medium text-gray-800">คลิก "ส่งวิดีโอ"</p>
+            </div>
+          </div>
+
+          {/* ขั้นตอนที่ 3 */}
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-1">3</div>
+            <div className="space-y-2">
+              <p className="font-medium text-gray-800">กรอกชื่อวิดีโอ เพื่อรวมรวบวิดีโอ</p>
+              <div className="flex justify-center">
+                <div className="bg-gray-100 p-2 rounded overflow-hidden">
+                  <img
+                    src={`${BASE_VIDEO_URL}/manual-help/inputname.png`}
+                    alt="img inputname"
+                    className="max-w-md h-auto rounded"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ขั้นตอนที่ 4 */}
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-1">4</div>
+            <div>
+              <p className="font-medium text-gray-800">คลิก "ถัดไป" เพื่อเริ่มสร้างวิดีโอ</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* หมายเหตุ */}
+      <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+        <p className="text-sm font-semibold text-yellow-800 mb-2">📌 หมายเหตุ:</p>
+        <ul className="text-sm text-yellow-800 space-y-1 ml-4 list-disc">
+          <li>
+            การรวมวิดีโอที่จะเกิดขึ้นได้ต้องผ่าน{' '}
+            <span
+              onClick={() => scrollToSection('5')}
+              className="cursor-pointer underline text-indigo-700 hover:text-indigo-900 font-bold"
+            >
+              การสร้างวิดีโอ
+            </span>{' '}
+            เพื่อนำวิดีโอย่อยมารวมวิดีโอ
+          </li>
+        </ul>
+      </div>
+    </div>
+  )
+},
     {
-      id: '6',
-      title: '6. วิดีโอของฉัน',
+      id: '7',
+      title: '7. ประวัติการสร้างวิดีโอ',
       icon: <Video className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
@@ -449,8 +536,8 @@ export default function HelpManual() {
       )
     },
     {
-      id: '7',
-      title: '7. ประวัติการใช้ Token',
+      id: '8',
+      title: '8. ประวัติการใช้ Token',
       icon: <Coins className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
@@ -491,8 +578,8 @@ export default function HelpManual() {
       )
     },
     {
-      id: '8',
-      title: '8. การจัดการโปรไฟล์',
+      id: '9',
+      title: '9. การจัดการโปรไฟล์',
       icon: <User className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
