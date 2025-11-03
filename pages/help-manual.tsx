@@ -23,7 +23,7 @@ export default function HelpManual() {
   // const [showTips, setShowTips] = useState(false);
   const [popupView, setPopupView] = useState('tips');
 
-  const BASE_VIDEO_URL = "http://192.168.70.166:8080";
+  const BASE_VIDEO_URL = process.env.NEXT_PUBLIC_BASE_VIDEO_URL;
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(`section-${sectionId}`);

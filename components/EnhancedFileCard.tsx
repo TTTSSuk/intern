@@ -11,6 +11,9 @@ interface FileDetails {
   tokensReserved: number
   status: string
   createdAt: string | null
+  jobType?: 'normal' | 'subvideos'; // 🔥 เพิ่ม jobType
+  executionId?: string
+  queuePosition?: number; 
 }
 
 interface EnhancedFileCardProps {
@@ -39,10 +42,106 @@ export default function EnhancedFileCard({ fileId, onDataLoaded }: EnhancedFileC
     return `${datePart} ${timePart}`;
   }
 
+  // 🔥 เพิ่ม Helper functions สำหรับ Status (เหมือนใน create-video.tsx)
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'idle': return 'พร้อมเริ่มงาน';
+      case 'queued': return 'อยู่ในคิว';
+      case 'starting': return 'กำลังเริ่มต้น';
+      case 'running': return 'กำลังสร้างวิดีโอ';
+      case 'processing': return 'กำลังประมวลผล';
+      case 'succeeded': return 'เสร็จสิ้น';
+      case 'completed': return 'เสร็จสิ้น';
+      case 'error': return 'เกิดข้อผิดพลาด';
+      default: return status;
+    }
+  };
+
+  const getStatusColorClass = (status: string) => {
+    switch (status) {
+      case 'succeeded':
+      case 'completed':
+        return 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300';
+      case 'error':
+        return 'bg-gradient-to-br from-red-50 to-pink-50 border-red-300';
+      case 'queued':
+        return 'bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-300';
+      case 'running':
+      case 'starting':
+      case 'processing':
+        return 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-300';
+      default:
+        return 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-300';
+    }
+  };
+
+  // useEffect(() => {
+  //   async function fetchFileDetails() {
+  //     try {
+  //       // 🔥 เปลี่ยน API endpoint เป็น status-unified
+  //       const res = await fetch(`/api/status-unified?id=${fileId}&t=${Date.now()}`)
+
+  //       if (!res.ok) {
+  //         console.error("Failed to fetch file details:", res.status)
+  //         setError(true)
+  //         setLoading(false)
+  //         return
+  //       }
+
+  //       const data = await res.json()
+  //       console.log("API Response:", data)
+
+  //       // Calculate required clips from folders.subfolders
+  //       let requiredClips = 0
+  //       if (data.folders?.subfolders && Array.isArray(data.folders.subfolders)) {
+  //         requiredClips = data.folders.subfolders.length
+  //       }
+
+  //       // นับเฉพาะ video clips (ไม่รวม finalVideo)
+  //       let createdClips = 0
+        
+  //       if (data.clips && Array.isArray(data.clips)) {
+  //         createdClips = data.clips.filter((clip: any) => clip.video && !clip.finalVideo).length
+  //       }
+
+  //       const details = {
+  //         fileName: data.originalName || "ไม่พบชื่อไฟล์",
+  //         totalClips: requiredClips,
+  //         createdClips: createdClips,
+  //         tokensReserved: data.tokensReserved || 0,
+  //         status: data.status || "unknown",
+  //         createdAt: data.createdAt || null,
+  //         jobType: data.jobType || 'normal', // 🔥 เก็บ jobType
+  //         executionId: data.executionIdHistory?.executionId || data.executionId || null,  // ⭐ เพิ่มบรรทัดนี้
+  //          queuePosition: data.queuePosition || null // 🔥 เพิ่มบรรทัดนี้
+  //       }
+
+  //       console.log("Processed file details:", details)
+        
+  //       setFileDetails(details)
+
+  //       if (onDataLoaded) {
+  //         onDataLoaded(data)
+  //       }
+
+  //       setLoading(false)
+  //     } catch (error) {
+  //       console.error("Error fetching file details:", error)
+  //       setError(true)
+  //       setLoading(false)
+  //     }
+  //   }
+
+  //   if (fileId) {
+  //     fetchFileDetails()
+  //   }
+  // }, [fileId, onDataLoaded])
+
   useEffect(() => {
     async function fetchFileDetails() {
       try {
-        const res = await fetch(`/api/status-wf?id=${fileId}&t=${Date.now()}`)
+        // 🔥 เปลี่ยน API endpoint เป็น status-unified
+        const res = await fetch(`/api/status-unified?id=${fileId}&t=${Date.now()}`)
 
         if (!res.ok) {
           console.error("Failed to fetch file details:", res.status)
@@ -74,6 +173,9 @@ export default function EnhancedFileCard({ fileId, onDataLoaded }: EnhancedFileC
           tokensReserved: data.tokensReserved || 0,
           status: data.status || "unknown",
           createdAt: data.createdAt || null,
+          jobType: data.jobType || 'normal', // 🔥 เก็บ jobType
+          executionId: data.executionIdHistory?.executionId || data.executionId || null,  // ⭐ เพิ่มบรรทัดนี้
+           queuePosition: data.queuePosition || null // 🔥 เพิ่มบรรทัดนี้
         }
 
         console.log("Processed file details:", details)
@@ -94,6 +196,13 @@ export default function EnhancedFileCard({ fileId, onDataLoaded }: EnhancedFileC
 
     if (fileId) {
       fetchFileDetails()
+      
+      // 🔥 เพิ่มการ polling ทุก 10 วินาที (เหมือนในหน้า create-video)
+      const interval = setInterval(() => {
+        fetchFileDetails()
+      }, 10000)
+      
+      return () => clearInterval(interval)
     }
   }, [fileId, onDataLoaded])
 
@@ -106,17 +215,7 @@ export default function EnhancedFileCard({ fileId, onDataLoaded }: EnhancedFileC
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-200">
-        <div className="animate-pulse flex items-center gap-4">
-          <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
-          <div className="flex-1">
-            <div className="h-5 bg-gray-200 rounded w-48 mb-3"></div>
-            <div className="h-4 bg-gray-200 rounded w-64"></div>
-          </div>
-          <div className="flex gap-6">
-            <div className="h-4 bg-gray-200 rounded w-24"></div>
-            <div className="h-4 bg-gray-200 rounded w-24"></div>
-          </div>
-        </div>
+        {/* ... (ส่วน Loading เหมือนเดิม) ... */}
       </div>
     )
   }
@@ -124,15 +223,7 @@ export default function EnhancedFileCard({ fileId, onDataLoaded }: EnhancedFileC
   if (error || !fileDetails) {
     return (
       <div className="bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-xl shadow-lg p-6 mb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
-            <span className="text-white text-2xl">⚠️</span>
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-red-800 mb-1">ไม่สามารถโหลดข้อมูลไฟล์</h3>
-            <p className="text-sm text-red-600">กรุณาลองใหม่อีกครั้ง</p>
-          </div>
-        </div>
+        {/* ... (ส่วน Error เหมือนเดิม) ... */}
       </div>
     )
   }
@@ -144,6 +235,7 @@ export default function EnhancedFileCard({ fileId, onDataLoaded }: EnhancedFileC
     ? (totalCreatedClips / totalClipsRequired) * 100
     : 0
   const isComplete = totalCreatedClips >= totalClipsRequired
+  const isSubvideosJob = fileDetails.jobType === 'subvideos'; // 🔥 เช็คประเภทงาน
 
   return (
     <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 mb-6 border-2 border-gray-200 hover:border-blue-300">
@@ -156,6 +248,7 @@ export default function EnhancedFileCard({ fileId, onDataLoaded }: EnhancedFileC
               {fileDetails.fileName}
             </h3>
             <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1">
               <div className="bg-gray-100 rounded-lg px-3 py-1.5 flex items-center gap-2 min-w-0">
                 <p className="text-xs text-gray-500 font-mono truncate flex-1" title={fileId}>
                   ID: {fileId}
@@ -173,6 +266,7 @@ export default function EnhancedFileCard({ fileId, onDataLoaded }: EnhancedFileC
                 </button>
               </div>
             </div>
+            </div>
 
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500">สร้างเมื่อ:</span>
@@ -185,46 +279,91 @@ export default function EnhancedFileCard({ fileId, onDataLoaded }: EnhancedFileC
           </div>
         </div>
 
-        {/* Right: Stats Grid */}
-        <div className="grid grid-cols-2 gap-3 flex-shrink-0">
-          {/* Clips Progress Card */}
-          <div className={`rounded-lg p-3 border-2 transition-all duration-300 ${
-            isComplete 
-              ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300' 
-              : 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-300'
-          }`}>
-            <p className="text-xs font-semibold text-gray-600 mb-1.5">Clips Progress</p>
+        {/* 🔥 Right: Stats Grid (ปรับปรุงใหม่) */}
+        <div className="flex-shrink-0">
+          
+          {/* 🔥 ใช้เงื่อนไข isSubvideosJob */}
+          {isSubvideosJob ? (
+  // ⭐ เปลี่ยนเป็น flex column เพื่อเพิ่ม Execution ID
+  <div className="grid grid-cols-2 gap-3">
+    {/* Status Card */}
+    <div 
+      className={`rounded-lg p-3 border-2 transition-all duration-300 ${getStatusColorClass(fileDetails.status)}`}
+      style={{ minWidth: '200px' }}
+    >
+      <p className="text-sm text-gray-500 mb-1">สถานะปัจจุบัน</p>
+      <div className="flex items-center gap-2">
+        <p className="font-bold text-lg">
+          {getStatusText(fileDetails.status)}
+        </p>
+      </div>
+    </div>
+    
+    {/* 🔥 Queue Position Card - แสดงเฉพาะเมื่อ status = queued */}
+    {fileDetails.status === 'queued' && fileDetails.queuePosition && (
+      <div className="bg-gradient-to-br from-yellow-50 to-amber-50 border-2 border-yellow-300 rounded-lg p-3">
+        <p className="text-sm text-gray-500 mb-1">ลำดับในคิว</p>
+        <p className="text-2xl font-bold text-yellow-700">
+          #{fileDetails.queuePosition}
+        </p>
+      </div>
+    )}
 
-            <div className="flex items-center gap-2 mb-1.5">
-              <p className="text-xl font-semibold text-gray-600">{totalCreatedClips}</p>
-              <span className="text-sm text-gray-500">/</span>
-              <p className="text-base font-semibold text-gray-600">{totalClipsRequired}</p>
-            </div>
+    {/* ⭐ Execution ID Card - แสดงถ้ามี executionId */}
+    {fileDetails.executionId && (
+      <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border-2 border-indigo-300 rounded-lg p-3">
+        <p className="text-xs font-semibold text-gray-600 mb-1.5">Execution ID</p>
+        <p className="text-sm font-mono text-indigo-700 break-all">
+          {fileDetails.executionId}
+        </p>
+      </div>
+    )}
+  </div>
 
-            <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
-              <div
-                className={`h-full transition-all duration-500 ${
-                  isComplete 
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
-                    : 'bg-gradient-to-r from-blue-500 to-indigo-500'
-                }`}
-                style={{ width: `${progressPercent}%` }}
-              ></div>
-            </div>
-          </div>
+          ) : (
+            
+            // 🔥 ถ้าเป็นงานปกติ (AI): แสดงผลแบบเดิม
+            <div className="grid grid-cols-2 gap-3">
+              {/* Clips Progress Card */}
+              <div className={`rounded-lg p-3 border-2 transition-all duration-300 ${
+                isComplete 
+                  ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300' 
+                  : 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-300'
+              }`}>
+                <p className="text-xs font-semibold text-gray-600 mb-1.5">Clips Progress</p>
 
-          {/* Tokens Reserved Card */}
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-300 rounded-lg p-3">
-            <p className="text-xs font-semibold text-gray-600 mb-1.5">Token Reserved</p>
-            <div className="flex items-center gap-2">
-              <p className="text-xl font-semibold text-gray-800">
-                {fileDetails.tokensReserved > 0 ? fileDetails.tokensReserved : "-"}
-              </p>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <p className="text-xl font-semibold text-gray-600">{totalCreatedClips}</p>
+                  <span className="text-sm text-gray-500">/</span>
+                  <p className="text-base font-semibold text-gray-600">{totalClipsRequired}</p>
+                </div>
+
+                <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      isComplete 
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
+                        : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                    }`}
+                    style={{ width: `${progressPercent}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Tokens Reserved Card */}
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-300 rounded-lg p-3">
+                <p className="text-xs font-semibold text-gray-600 mb-1.5">Token Reserved</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xl font-semibold text-gray-800">
+                    {fileDetails.tokensReserved > 0 ? fileDetails.tokensReserved : "-"}
+                  </p>
+                </div>
+                {fileDetails.tokensReserved > 0 && (
+                  <p className="text-xs text-purple-600 font-medium mt-1.5">จองไว้แล้ว</p>
+                )}
+              </div>
             </div>
-            {fileDetails.tokensReserved > 0 && (
-              <p className="text-xs text-purple-600 font-medium mt-1.5">จองไว้แล้ว</p>
-            )}
-          </div>
+          )}
         </div>
 
       </div>
